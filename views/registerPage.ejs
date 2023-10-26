@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <title>Register</title>
+</head>
+
+<script>
+    function roleChange(element) {
+        var userType = element.value;
+        var resumeFields = document.getElementById('resumeFields');
+        var professorFields = document.getElementById('professorFields');
+        var orgWebsiteFields = document.getElementById('orgWebsiteField');
+        var orgDescriptionFields = document.getElementById('orgDescriptionField');
+        var orgRecruitField= document.getElementById('orgRecruitField');
+
+        resumeFields.style.display = 'none';
+        professorFields.style.display = 'none';
+        orgWebsiteFields.style.display = 'none';
+        orgDescriptionFields.style.display = 'none';
+        orgRecruitField.style.display = 'none';
+
+        if (userType === 'Student') {
+            resumeFields.style.display = 'block';
+            document.getElementById('resume').required = true;
+            document.getElementById('orgWebsite').required = false;
+            document.getElementById('orgDescription').required = false;
+            document.getElementById('lookingForAssistants').required = false;
+            document.getElementById('recruitStudents').required = false;
+        } else if (userType === 'Professor') {
+            resumeFields.style.display = 'block';
+            professorFields.style.display = 'block';
+            document.getElementById('resume').required = true;
+            document.getElementById('orgWebsite').required = false;
+            document.getElementById('orgDescription').required = false;
+            document.getElementById('lookingForAssistants').required = true;
+            document.getElementById('recruitStudents').required = false;
+        } else if (userType === 'Organization') {
+            orgWebsiteFields.style.display = 'block';
+            orgDescriptionFields.style.display = 'block';
+            orgRecruitField.style.display = 'block';
+            document.getElementById('resume').required = false;
+            document.getElementById('orgWebsite').required = true;
+            document.getElementById('orgDescription').required = true;
+            document.getElementById('lookingForAssistants').required = false;
+            document.getElementById('recruitStudents').required = true;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Code to run when the document is loaded
+        var passwordInput = document.getElementById('password');
+        var confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
+
+        if (passwordInput && confirmPasswordGroup) {
+            passwordInput.addEventListener('input', function () {
+                if (passwordInput.value.trim() !== '') {
+                    confirmPasswordGroup.style.display = 'block';
+                } else {
+                    confirmPasswordGroup.style.display = 'none';
+                }
+            });
+
+            var confirmPasswordInput = document.getElementById('confirmPassword');
+            confirmPasswordInput.addEventListener('input', function () {
+                var password = passwordInput.value;
+                var confirmPassword = confirmPasswordInput.value;
+
+                if (password === confirmPassword) {
+                    confirmPasswordInput.setCustomValidity('');
+                } else {
+                    confirmPasswordInput.setCustomValidity('Passwords do not match');
+                }
+            });
+        }
+    });
+</script>
+
+<body>
+    <div class="container">
+        <br>
+        <h1>Registration Form</h1>
+        <br>
+        <form action="/createAccount" method="post" enctype="multipart/form-data" >
+            <div class="form-group">
+                <label for="firstname">First Name:</label>
+                <input type="text" class="form-control" id="firstname" name="firstname" required>
+            </div>
+            <div class="form-group">
+                <label for="lastname">Last Name:</label>
+                <input type="text" class="form-control" id="lastname" name="lastname" required>
+            </div>
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="username" class="form-control" id="username" name="username" required>
+            </div>
+            <% if (err) {%>
+                <label id="usernameErrorLabel" style="color: red; margin-left: 10px;"><%= err %></label>
+            <%}%>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+            </div>
+            <div class="form-group" id="confirmPasswordGroup" style="display: none;">
+                <label for="confirmPassword">Confirm Password:</label>
+                <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+            </div>
+            <div class="form-group">
+                <label for="userType">Register as:</label>
+                <select class="form-control" id="userType" name="userType" onchange="roleChange(this)" required>
+                    <option value=""></option>
+                    <option value="Student">Student</option>
+                    <option value="Professor">Professor</option>
+                    <option value="Organization">Organization</option>
+                </select>
+            </div>
+            <div id="resumeFields" style="display: none;">
+                <div class="form-group">
+                    <label for="resume">Upload Resume:</label>
+                    <input type="file" class="form-control" id="resume" name="resume" accept=".pdf, .doc, .docx">
+                </div>
+            </div>
+            <div id="professorFields" style="display: none;">
+                <div class="form-group">
+                    <label for="lookingForAssistants">Looking for Research Assistants:</label>
+                    <select class="form-control" id="lookingForAssistants" name="lookingForAssistants">
+                        <option value=""></option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" id="orgWebsiteField" style="display: none">
+                <label for="orgWebsite">Organization Website:</label>
+                <input type="text" class="form-control" id="orgWebsite" name="orgWebsite">
+            </div>
+            <div class="form-group" id="orgDescriptionField" style="display: none">
+                <label for="orgDescription">Brief Description:</label>
+                <textarea class="form-control" id="orgDescription" name="orgDescription" rows="4"></textarea>
+            </div>
+            <div class="form-group" id="orgRecruitField" style="display: none">
+                <label for="recruitStudents">Looking to Recruit Students:</label>
+                <select class="form-control" id="recruitStudents" name="recruitStudents">
+                    <option value=""></option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                </select>
+            </div>
+            <div id="error-message" style="color: red;"></div>
+            <button type="submit" class="btn btn-primary">Register</button>
+        </form>
+    </div>
+</body>
+</html>
