@@ -8,7 +8,25 @@ AWS.config.update(config.aws_remote_config);
 var db = new AWS.DynamoDB();
 var s3 = new AWS.S3();
 
-var homePage = function(req, res) {
+var getAnnouncements = function(req, res) {
+    let user = req.session.userId;
+    let posts = [{
+        announcementId: 1,
+        announcementTitle: "CIS Colloquium",
+        userCreated: "aiatpenn",
+        contents: "Join us this Saturday at 10 am",
+        announcementDate: "10/09/2023"
+    }, {
+        announcementId: 1,
+        announcementTitle: "Basketball Pickup",
+        userCreated: "cchua06",
+        contents: "Join us this Sunday at 11:30 am at Pottruck",
+        announcementDate: "11/11/2023"
+    }]
+    res.send(posts);
+}
+
+var homePage = async function(req, res) {
     if (!req.session.userId) {
         return res.redirect("/loginPage");
     } else {
@@ -75,7 +93,6 @@ var registerPage = function(req, res) {
 }
 
 var createAccount = async function(req, res) {
-    console.log(req.body);
     await fileparser.parsefile(req).then(async data => {
         let userId = data.Item['userId'].S;
 
@@ -105,12 +122,35 @@ var profilePage = async function(req, res) {
             const userType = value.userType.S;
             if (userType == "Student" || userType == "Professor") {
                 await updateResumeLink(value.resumeBucketKey.S).then(resumeURL => {
-                    return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: resumeURL});
+                    return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: resumeURL, orgWebsite: null});
                 });
             } else {
-                return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: null});
+                return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: null, orgWebsite: value.orgWebsite.S});
             }
         });
+    }
+}
+
+var viewOther = async function(req, res) {
+    if (!req.session.userId) {
+        return res.redirect("/loginPage");
+    } else {
+        let currentUser = req.session.userId;
+        let friendId = req.query.friendId;
+        if (currentUser == friendId) {
+            profilePage(req, res);
+            return;
+        }
+        await getProfile(friendId).then(async function(value) {
+            const userType = value.userType.S;
+            if (userType == "Student" || userType == "Professor") {
+                await updateResumeLink(value.resumeBucketKey.S).then(resumeURL => {
+                    return res.render('viewProfile.ejs', {userId: currentUser, viewId: friendId, data: value, resume: resumeURL, orgWebsite: null});
+                });
+            } else {
+                return res.render('viewProfile.ejs', {userId: currentUser, viewId: friendId, data: value, resume: null, orgWebsite: value.orgWebsite.S});
+            }
+        })
     }
 }
 
@@ -211,10 +251,12 @@ var view_routes = {
     check_login: checkLogin,
     register_page: registerPage,
     profile_page: profilePage,
+    view_other: viewOther,
     connections_page: connectionsPage,
     create_account: createAccount,
     get_profile: getProfile,
     update_profile: updateProfile,
+    get_announcements: getAnnouncements,
     log_out: logOut
 }
 

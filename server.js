@@ -21,14 +21,18 @@ app.post('/checkLogin', routes.check_login);
 app.get('/registerPage', routes.register_page);
 app.get('/logOut', routes.log_out);
 
-//user routes
+//profile routes
 app.post('/createAccount', routes.create_account);
 app.get('/profile', routes.profile_page);
 app.get('/connections', routes.connections_page);
+app.get('/otherProfile', routes.view_other);
 
 //data routes
 app.get('/profileData', routes.get_profile);
 app.post('/updateProfile', routes.update_profile);
+
+//announcement routes
+app.get('/getAnnouncements', routes.get_announcements);
 
 const fileparser = require('./routes/fileparser.js');
 

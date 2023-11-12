@@ -78,21 +78,54 @@ const parsefile = async (req, res) => {
             var userId = fields.username[0];
             var hashed_password = sha256(fields.password[0]);
             var userType = fields.userType[0];
-            var resumeFile = null;
+            var resumeFile = "";
             var orgWebsite = "";
             var orgDescription = "";
             console.log(fields);
 
             if (userType == "Student" || userType == "Professor") {
                 resumeFile = files.resume[0]._writeStream.path;
+                await uploadFile(resumeFile, makeid(8)).then(value => {
+                    var params = {
+                        TableName: "users",
+                        Item: {
+                            "userId": {
+                                "S": userId
+                            },
+                            "firstName": {
+                                "S": firstName
+                            },
+                            "lastName": {
+                                "S": lastName
+                            },
+                            "email": {
+                                "S": email
+                            },
+                            "password": {
+                                "S": hashed_password
+                            },
+                            "userType": {
+                                "S": userType
+                            },
+                            "resumeBucketKey": {
+                                "S": value
+                            },
+                            "orgWebsite": {
+                                "S": orgWebsite
+                            },
+                            "orgDescription": {
+                                "S": orgDescription
+                            }
+                        },
+                        ConditionExpression: 'attribute_not_exists(userId)',
+                        ReturnValues: 'NONE'
+                    };
+        
+                    resolve(params);
+                })
             } else if (userType == "Organization") {
                 orgWebsite = fields.orgWebsite[0];
                 orgDescription = fields.orgDescription[0];
-            } else {
-                reject(err);
-            }
-
-            await uploadFile(resumeFile, makeid(8)).then(value => {
                 var params = {
                     TableName: "users",
                     Item: {
@@ -115,7 +148,7 @@ const parsefile = async (req, res) => {
                             "S": userType
                         },
                         "resumeBucketKey": {
-                            "S": value
+                            "S": resumeFile
                         },
                         "orgWebsite": {
                             "S": orgWebsite
@@ -129,7 +162,9 @@ const parsefile = async (req, res) => {
                 };
     
                 resolve(params);
-            })
+            } else {
+                reject(err);
+            }
         });
     })
 }

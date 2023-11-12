@@ -101,6 +101,7 @@ button:hover {
 <script>
     function toggleEdit() {
         var inputs = document.querySelectorAll("input[readonly]");
+        var textareas = document.querySelectorAll("textarea[readonly]");
         var editForm = document.getElementById("editForm");
         var buttons = document.getElementById("buttons");
 
@@ -108,9 +109,21 @@ button:hover {
             inputs[i].removeAttribute("readonly");
         }
 
+        for (var i = 0; i < textareas.length; i++) {
+            textareas[i].readOnly = false;
+        }
+
         buttons.style.display = "block";
-        document.getElementById("resumeInput").style.display = "block";
-        document.getElementById("resumeView").style.display = "none";
+
+        if (document.getElementById("resume")) {
+            document.getElementById("resumeInput").style.display = "block";
+            document.getElementById("resumeView").style.display = "none";
+        }
+
+        if (document.getElementById("orgWebsiteView")) {
+            document.getElementById("orgWebsiteInput").style.display= "block";
+            document.getElementById("orgWebsiteView").style.display = "none";
+        }
     }
 
     function discardChanges(event) {
@@ -120,23 +133,29 @@ button:hover {
             var editForm = document.getElementById("editForm");
             var buttons = document.getElementById("buttons");
 
-            document.getElementById("usernameInput").value = "<%= userId %>";
+            //document.getElementById("usernameInput").value = "<%= userId %>";
             document.getElementById("firstNameInput").value = "<%= data.firstName.S %>";
             document.getElementById("lastNameInput").value = "<%= data.lastName.S %>";
+            
             if (document.getElementById("orgWebsiteInput")) {
+                document.getElementById("orgWebsiteInput").style.display= "none";
+                document.getElementById("orgWebsiteView").style.display = "block";
                 document.getElementById("orgWebsiteInput").value = "<%= data.orgWebsite.S %>";
                 document.getElementById("orgDescriptionInput").value = "<%= data.orgDescription.S %>";
                 document.getElementById("orgWebsiteInput").setAttribute("readonly", "readonly");
-            document.getElementById("orgDescriptionInput").setAttribute("readonly", "readonly");
+                document.getElementById("orgDescriptionInput").setAttribute("readonly", "readonly");
             }
 
-            document.getElementById("usernameInput").setAttribute("readonly", "readonly");
+            if (document.getElementById("resume")) {
+                document.getElementById("resumeInput").style.display = "none";
+                document.getElementById("resumeView").style.display = "block";
+            };
+
+            //document.getElementById("usernameInput").setAttribute("readonly", "readonly");
             document.getElementById("firstNameInput").setAttribute("readonly", "readonly");
             document.getElementById("lastNameInput").setAttribute("readonly", "readonly");
 
             buttons.style.display = "none";
-            document.getElementById("resumeInput").style.display = "none";
-            document.getElementById("resumeView").style.display = "block";
         }
     }
 </script>
@@ -182,13 +201,14 @@ button:hover {
                 <div class="row mb-3 form-group" id="resume">
                     <a class="col-sm-6" style="font-weight: bold" title="firstName">Resume:</a>
                     <a class="col-sm-6" id="resumeView" href=<%=resume%>>Download</a>
-                    <input name="resumeInput" type="file" style="display: none" class="col-sm-6" id="resumeInput" accept=".pdf, .doc, .docx" style="display: none;" />
+                    <input name="resumeInput" type="file" style="display: none" class="col-sm-6" id="resumeInput" accept=".pdf, .doc, .docx" style="display: none" />
                 </div>
             <%}%>
             <% if (orgWebsite) {%>
                 <div class="row mb-3 form-group">
                     <a class="col-sm-6" style="font-weight: bold" title="orgWebsite">Organization Website:</a>
-                    <input name="orgWebsite" class="col-sm-6" type="text" id="orgWebsiteInput" value="<%= data.orgWebsite.S %>" readonly />
+                    <a class="col-sm-6" id="orgWebsiteView" href=<%=orgWebsite%>><%=orgWebsite%></a>
+                    <input name="orgWebsite" class="col-sm-6" type="text" id="orgWebsiteInput" value="<%= data.orgWebsite.S %>" style="display: none" />
                 </div>
                 <div class="row mb-3 form-group">
                     <a class="col-sm-6" style="font-weight: bold" title="orgDescription">Organization Website:</a>

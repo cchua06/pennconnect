@@ -52,6 +52,13 @@
         var passwordInput = document.getElementById('password');
         var confirmPasswordGroup = document.getElementById('confirmPasswordGroup');
 
+        var orgWebsiteFields = document.getElementById('orgWebsiteField');
+        var orgDescriptionFields = document.getElementById('orgDescriptionField');
+        var orgRecruitField= document.getElementById('orgRecruitField');
+        orgWebsiteFields.style.display = 'none';
+        orgDescriptionFields.style.display = 'none';
+        orgRecruitField.style.display = 'none';
+
         if (passwordInput && confirmPasswordGroup) {
             passwordInput.addEventListener('input', function () {
                 if (passwordInput.value.trim() !== '') {
@@ -118,6 +125,22 @@
                     <option value="Organization">Organization</option>
                 </select>
             </div>
+            <div class="form-group" id="orgWebsiteField">
+                <label for="orgWebsite">Organization Website:</label>
+                <input type="text" class="form-control" id="orgWebsite" name="orgWebsite">
+            </div>
+            <div class="form-group" id="orgDescriptionField">
+                <label for="orgDescription">Brief Description:</label>
+                <textarea class="form-control" id="orgDescription" name="orgDescription" rows="4"></textarea>
+            </div>
+            <div class="form-group" id="orgRecruitField">
+                <label for="recruitStudents">Looking to Recruit Students:</label>
+                <select class="form-control" id="recruitStudents" name="recruitStudents">
+                    <option value=""></option>
+                    <option value="yes">Yes</option>
+                    <option value="no">No</option>
+                </select>
+            </div>
             <div id="resumeFields" style="display: none;">
                 <div class="form-group">
                     <label for="resume">Upload Resume:</label>
@@ -133,22 +156,6 @@
                         <option value="no">No</option>
                     </select>
                 </div>
-            </div>
-            <div class="form-group" id="orgWebsiteField" style="display: none">
-                <label for="orgWebsite">Organization Website:</label>
-                <input type="text" class="form-control" id="orgWebsite" name="orgWebsite">
-            </div>
-            <div class="form-group" id="orgDescriptionField" style="display: none">
-                <label for="orgDescription">Brief Description:</label>
-                <textarea class="form-control" id="orgDescription" name="orgDescription" rows="4"></textarea>
-            </div>
-            <div class="form-group" id="orgRecruitField" style="display: none">
-                <label for="recruitStudents">Looking to Recruit Students:</label>
-                <select class="form-control" id="recruitStudents" name="recruitStudents">
-                    <option value=""></option>
-                    <option value="yes">Yes</option>
-                    <option value="no">No</option>
-                </select>
             </div>
             <div id="error-message" style="color: red;"></div>
             <button type="submit" class="btn btn-primary">Register</button>
