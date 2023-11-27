@@ -13,16 +13,20 @@
         var orgWebsiteFields = document.getElementById('orgWebsiteField');
         var orgDescriptionFields = document.getElementById('orgDescriptionField');
         var orgRecruitField= document.getElementById('orgRecruitField');
+        var interestsField = document.getElementById('interestsField');
 
         resumeFields.style.display = 'none';
         professorFields.style.display = 'none';
         orgWebsiteFields.style.display = 'none';
         orgDescriptionFields.style.display = 'none';
         orgRecruitField.style.display = 'none';
+        interestsField.style.display = 'none';
 
         if (userType === 'Student') {
             resumeFields.style.display = 'block';
-            document.getElementById('resume').required = true;
+            interestsField.style.display = 'block';
+            //document.getElementById('resume').required = true;
+            //document.getElementById('interests').required = true;
             document.getElementById('orgWebsite').required = false;
             document.getElementById('orgDescription').required = false;
             document.getElementById('lookingForAssistants').required = false;
@@ -30,7 +34,8 @@
         } else if (userType === 'Professor') {
             resumeFields.style.display = 'block';
             professorFields.style.display = 'block';
-            document.getElementById('resume').required = true;
+            //document.getElementById('resume').required = true;
+            //document.getElementById('interests').required = false;
             document.getElementById('orgWebsite').required = false;
             document.getElementById('orgDescription').required = false;
             document.getElementById('lookingForAssistants').required = true;
@@ -39,7 +44,8 @@
             orgWebsiteFields.style.display = 'block';
             orgDescriptionFields.style.display = 'block';
             orgRecruitField.style.display = 'block';
-            document.getElementById('resume').required = false;
+            //document.getElementById('resume').required = false;
+            //document.getElementById('interests').required = false;
             document.getElementById('orgWebsite').required = true;
             document.getElementById('orgDescription').required = true;
             document.getElementById('lookingForAssistants').required = false;
@@ -80,7 +86,64 @@
                 }
             });
         }
+
+        var interestsTextarea = document.getElementById('interests');
+        var interestsAddButton = document.getElementById('interestsAddButton');
+        var interestsList = document.getElementById('interestsList');
+        var hiddenInterestsContainer = document.getElementById('hiddenInterests');
+
+        interestsAddButton.addEventListener('click', function () {
+            var newInterest = interestsTextarea.value.trim();
+            document.getElementById('error-message').textContent = '';
+
+            if (newInterest !== '' && !isInterestAlreadyAdded(newInterest)) {
+                var interestItem = document.createElement('li');
+                interestItem.innerHTML = '<span>' + newInterest + '</span><button type="button" class="btn btn-sm btn-danger ml-2 mb-2" onclick="removeInterest(this)">X</button>';
+                interestsList.appendChild(interestItem);
+                console.log(newInterest);
+
+                hiddenInterestsContainer.value = hiddenInterestsContainer.value + newInterest + ',';
+
+                interestsTextarea.value = '';
+            }
+        });
+
+        function isInterestAlreadyAdded(interest) {
+            var existingInterests = interestsList.getElementsByTagName('span');
+
+            for (var i = 0; i < existingInterests.length; i++) {
+                if (existingInterests[i].textContent.toLowerCase() === interest.toLowerCase()) {
+                    alert('Interest already added.');
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Add an event listener for form submission
+        var registrationForm = document.getElementById('registrationForm');
+        registrationForm.addEventListener('submit', function (event) {
+            var userType = document.getElementById('userType').value;
+
+            // Check if the user type is Student and at least one interest is entered
+            if (userType === 'Student' && interestsList.children.length === 0) {
+                event.preventDefault(); // Prevent form submission
+                document.getElementById('error-message').textContent = 'Please enter at least one interest.';
+            }
+        });
     });
+
+    function removeInterest(button) {
+        var interestItem = button.parentNode;
+        var interestText = interestItem.querySelector('span').textContent;
+
+        // Remove from hidden input
+        var hiddenInterestsInput = document.getElementById('hiddenInterests');
+        hiddenInterestsInput.value = hiddenInterestsInput.value.replace(interestText + ',', '');
+
+        interestItem.parentNode.removeChild(interestItem);
+    }
 </script>
 
 <body>
@@ -88,7 +151,10 @@
         <br>
         <h1>Registration Form</h1>
         <br>
-        <form action="/createAccount" method="post" enctype="multipart/form-data" >
+        <form action="/createAccount" method="post" enctype="multipart/form-data" id="registrationForm">
+            <div class="form-group" style="display: none">
+                <input type="text" name="interests" class="form-control" id="hiddenInterests" readonly>
+            </div>
             <div class="form-group">
                 <label for="firstname">First Name:</label>
                 <input type="text" class="form-control" id="firstname" name="firstname" required>
@@ -157,6 +223,18 @@
                     </select>
                 </div>
             </div>
+            <div class="form-group" id="interestsField" style="display: none;">
+                <label for="interests">Interests:</label>
+                <div class="input-group">
+                    <textarea class="form-control" id="interests" style="height: 100%; resize: none;"></textarea>
+                    <div class="input-group-append">
+                        <button type="button" class="btn btn-success" id="interestsAddButton">Add</button>
+                    </div>
+                </div>
+                <ul id="interestsList" class="list-unstyled mt-2"></ul>
+            </div>
+            <br>
+            <hr style="border-top: 1px dotted black; width: 100%;">
             <div id="error-message" style="color: red;"></div>
             <button type="submit" class="btn btn-primary">Register</button>
         </form>

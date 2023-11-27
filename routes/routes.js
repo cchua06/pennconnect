@@ -121,9 +121,13 @@ var profilePage = async function(req, res) {
         await getProfile(req.session.userId).then(async function(value) {
             const userType = value.userType.S;
             if (userType == "Student" || userType == "Professor") {
-                await updateResumeLink(value.resumeBucketKey.S).then(resumeURL => {
-                    return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: resumeURL, orgWebsite: null});
-                });
+                if (value.resumeBucketKey.S != '') {
+                    await updateResumeLink(value.resumeBucketKey.S).then(resumeURL => {
+                        return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: resumeURL, orgWebsite: null});
+                    });
+                }  else {
+                    return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: null, orgWebsite: null});
+                }
             } else {
                 return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: null, orgWebsite: value.orgWebsite.S});
             }
@@ -215,7 +219,7 @@ var updateProfile = async function(req, res) {
                         params.ExpressionAttributeValues[`:${key}`] = {S: data[key]};
                         params.ExpressionAttributeNames = params.ExpressionAttributeNames || {};
                         params.ExpressionAttributeNames[`#${key}`] = key;
-                      }
+                    }
                 }
                 params.UpdateExpression = params.UpdateExpression.slice(0, -1);
                 db.updateItem(params, (err, data) => {

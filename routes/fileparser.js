@@ -81,11 +81,19 @@ const parsefile = async (req, res) => {
             var resumeFile = "";
             var orgWebsite = "";
             var orgDescription = "";
-            console.log(fields);
+            var interests = "I am interested in everything.";
+            if (fields.interests != null) {
+                var interestString = fields.interests[0];
+                var interestsArray = interestString.split(',');
+                interestsArray.pop();
+
+                interests = interestsArray.map(function(interest) {
+                    return 'I am interested in ' + interest.trim() + '.';
+                }).join(' ');
+            }
 
             if (userType == "Student" || userType == "Professor") {
-                resumeFile = files.resume[0]._writeStream.path;
-                await uploadFile(resumeFile, makeid(8)).then(value => {
+                if (files.resume == null) {
                     var params = {
                         TableName: "users",
                         Item: {
@@ -108,13 +116,16 @@ const parsefile = async (req, res) => {
                                 "S": userType
                             },
                             "resumeBucketKey": {
-                                "S": value
+                                "S": resumeFile
                             },
                             "orgWebsite": {
                                 "S": orgWebsite
                             },
                             "orgDescription": {
                                 "S": orgDescription
+                            },
+                            "interests": {
+                                "S": interests
                             }
                         },
                         ConditionExpression: 'attribute_not_exists(userId)',
@@ -122,7 +133,50 @@ const parsefile = async (req, res) => {
                     };
         
                     resolve(params);
-                })
+                } else {
+                    resumeFile = files.resume[0]._writeStream.path;
+                    await uploadFile(resumeFile, makeid(8)).then(value => {
+                        var params = {
+                            TableName: "users",
+                            Item: {
+                                "userId": {
+                                    "S": userId
+                                },
+                                "firstName": {
+                                    "S": firstName
+                                },
+                                "lastName": {
+                                    "S": lastName
+                                },
+                                "email": {
+                                    "S": email
+                                },
+                                "password": {
+                                    "S": hashed_password
+                                },
+                                "userType": {
+                                    "S": userType
+                                },
+                                "resumeBucketKey": {
+                                    "S": value
+                                },
+                                "orgWebsite": {
+                                    "S": orgWebsite
+                                },
+                                "orgDescription": {
+                                    "S": orgDescription
+                                },
+                                "interests": {
+                                    "S": interests
+                                }
+                            },
+                            ConditionExpression: 'attribute_not_exists(userId)',
+                            ReturnValues: 'NONE'
+                        };
+            
+                        resolve(params);
+                    })
+                }
             } else if (userType == "Organization") {
                 orgWebsite = fields.orgWebsite[0];
                 orgDescription = fields.orgDescription[0];
@@ -155,6 +209,9 @@ const parsefile = async (req, res) => {
                         },
                         "orgDescription": {
                             "S": orgDescription
+                        },
+                        "interests": {
+                            "S": interests
                         }
                     },
                     ConditionExpression: 'attribute_not_exists(userId)',
@@ -185,14 +242,24 @@ const updatefile = async (req, originalData) => {
                 }
             }
             if (files && files.resumeInput) {
-                await deleteFile(originalData['resumeBucketKey'].S).then(async function() {
-                    resumeFile = files.resumeInput[0]._writeStream.path;
+                resumeFile = files.resumeInput[0]._writeStream.path;
+                try {
+                    await deleteFile(originalData['resumeBucketKey'].S).then(async function() {
+                        await uploadFile(resumeFile, makeid(8)).then(value => {
+                            fieldsToUpdate["resumeBucketKey"] = value;
+                            resolve(fieldsToUpdate);
+                        });
+                    });
+                } catch (error) {
                     await uploadFile(resumeFile, makeid(8)).then(value => {
                         fieldsToUpdate["resumeBucketKey"] = value;
                         resolve(fieldsToUpdate);
-                    })
-                });
+                    });
+                }
             } else {
+                if (fieldsToUpdate.interests != null) {
+                    fieldsToUpdate.interests = fields.interests[0];
+                }
                 resolve(fieldsToUpdate);
             }
         })
