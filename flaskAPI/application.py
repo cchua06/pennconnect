@@ -1,6 +1,7 @@
 from taggingTools import ApiTracker, Tagger
 
 from flask import Flask, request, jsonify
+from datetime import datetime
 import uuid
 import boto3
 import json
@@ -15,7 +16,7 @@ dynamodb = boto3.resource('dynamodb',
                           aws_secret_access_key=aws_secret_access_key,
                           region_name='us-east-1')
 
-app = Flask(__name__)
+application = Flask(__name__)
 
 # Initialize your ApiTracker and Tagger here
 tracker = ApiTracker()
@@ -153,7 +154,11 @@ tagger.add_tag(
     parentAttributes=[['Purpose','Non_Professional_Event']]
 )
 
-@app.route('/process_text', methods=['POST'])
+@application.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+@application.route('/process_text', methods=['POST'])
 def process_text():
     try:
         data = request.json
@@ -173,36 +178,60 @@ def process_text():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/log_announcement', methods=['POST'])
+@application.route('/log_announcement', methods=['POST'])
 def log_announcement():
     try:
         data = request.json
         text = data['text']
+        announcement_title = data.get('announcementTitle', 'Default Title')  # Default title if not provided
+        user_created = data.get('userCreated', 'Unknown User')  # Default user if not provided
 
-        # Use your Tagger class to tag the text
-        tags = tagger.tagText(text)
+        # Split the text into announcements if needed
+        announcements = tagger.split_announcements(text)
 
-        # Generate a unique announcement ID
-        announcement_id = str(uuid.uuid4())
+        # Initialize a list to store response for each announcement
+        response = []
 
-        # Get the DynamoDB table
-        table = dynamodb.Table('announcements')
+        # Get current datetime
+        current_datetime = datetime.now().strftime("%d/%m/%Y, %I:%M%p")
 
-        # Store the announcement and its tags in DynamoDB
-        table.put_item(
-            Item={
+        # Process each announcement
+        for announcement in announcements:
+            tags = tagger.tagText(announcement)
+            announcement_id = str(uuid.uuid4())
+
+            # Get the DynamoDB table
+            table = dynamodb.Table('announcements')
+
+            # Store the announcement and its tags in DynamoDB
+            table.put_item(
+                Item={
+                    'announcementId': announcement_id,
+                    'announcementTitle': announcement_title,
+                    'userCreated': user_created,
+                    'contents': announcement,
+                    'announcementDateTime': current_datetime,
+                    'tags': json.dumps(tags)  # Serialize tags if they are not a simple dictionary
+                }
+            )
+
+            # Add the processed announcement to the response
+            response.append({
                 'announcementId': announcement_id,
-                'text': text,
-                'tags': json.dumps(tags)  # Serialize tags if they are not a simple dictionary
-            }
-        )
+                'announcementTitle': announcement_title,
+                'userCreated': user_created,
+                'contents': announcement,
+                'announcementDateTime': current_datetime,
+                'tags': tags
+            })
 
-        return jsonify({'announcementId': announcement_id, 'tags': tags}), 200
+        return jsonify(response), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/create_algorithm', methods=['POST'])
+
+@application.route('/create_algorithm', methods=['POST'])
 def create_algorithm():
     data = request.json
     algorithm_id = str(uuid.uuid4())
@@ -221,7 +250,7 @@ def create_algorithm():
     return jsonify({'algorithmId': algorithm_id}), 200
 
 
-@app.route('/get_score', methods=['POST'])
+@application.route('/get_score', methods=['POST'])
 def get_score():
     try:
         data = request.json
@@ -255,4 +284,4 @@ def get_score():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    application.run(debug=True)
