@@ -454,13 +454,95 @@ Response:
       answers = [self.json_response_extractor(resp) for resp in responses]
       return zip(tags, answers)
 
+    def score_tag_value_pair(self, goal, tag, tagValue):
+      #Takes in a goal and a set of tags.
+      #Iterate through set of tags and classifies each (tag,value) pair as either "boost", "ignore", or "filter"
+      prompt = f"""
+Your task is to act as a content recommendation algorithm. You will be provided a user goal, and a tag. Information associated with each tag include that tag's name, the tag description, tag question, tag responses, and the response guide.
+For each tag, your task is to identify how the recommendation algorithm should prioritize tag values. We can assign the following values:
+
+1 - We assign a score of 1 if a post containing that tag-value pair is *irrelevant* for a user's goal
+3 - We assign a score of 3 if a post containing that tag-value pair is *potentially relevant* for a user's goal
+5 - We assign a score of 5 if a post containing that tag-value pair is *definitely relevant* for a user's goal
+10 - We assign a score of 10 if a post containing that tag-value pair is *highly relevant* for a user's goal
+
+Some examples of the task being performed are shown below. Your response should be formatted as a JSON following the format below
+Response : {{
+  "Reasoning": "String reasoning through how to score posts with the tag value being considered",
+  "Score": Any of 1,3,5, or 10
+}}
+
+---
+
+Goal Description: The user wants to look for outside internships
+Tag:
+{{
+"name": "Sender_Origin",
+"description": "Origin of the email sender",
+"question"': "Who is the origin of the email?",
+Responses: ["Admin_Communication", "Academic_Department", "Student_Organization", "External_Organization", "System_Autoresponse", "Other", "Unknown/Uncertain"]
+Response Guide: {{
+  "Admin_Communication": "Emails originating from university administrative offices or personnel.",
+  "Academic_Department": "Emails from specific departments.",
+  "Student_Organization": "Emails from recognized student groups, clubs, or organizations.",
+  "External_Organization": "Emails from entities outside the university, such as corporate partners, other institutions, etc.",
+  "System_Autoresponse": "Automated emails from university platforms or services.",
+  "Other": "Emails that don't fall into the predefined categories.",
+  "Unknown/Uncertain": "Emails where the origin is unclear or uncertain".
+}}
+Tag value being considered: Student_Organization
+Response: {{
+"Reasoning" : "The user is looking for outside internships, emails from Student Organizations might include opportunities from outside Penn. Emails with this tag may be potentially relevant.",
+"Score" : 3
+}}
+
+Goal Description: The user wants to look for outside internships
+Tag:
+{{
+"name": "Sender_Origin",
+"description": "Origin of the email sender",
+"question"': "Who is the origin of the email?",
+Responses: ["Admin_Communication", "Academic_Department", "Student_Organization", "External_Organization", "System_Autoresponse", "Other", "Unknown/Uncertain"]
+Response Guide: {{
+  "Admin_Communication": "Emails originating from university administrative offices or personnel.",
+  "Academic_Department": "Emails from specific departments.",
+  "Student_Organization": "Emails from recognized student groups, clubs, or organizations.",
+  "External_Organization": "Emails from entities outside the university, such as corporate partners, other institutions, etc.",
+  "System_Autoresponse": "Automated emails from university platforms or services.",
+  "Other": "Emails that don't fall into the predefined categories.",
+  "Unknown/Uncertain": "Emails where the origin is unclear or uncertain".
+}}
+Tag value being considered: External_Organization
+Response: {{
+"Reasoning" : "The user is looking for outside internships, emails from External organizations should be prioritized above all other types of responses. Emails with this tag may be Highly relevant.",
+"Score" : 10
+}}
+
+
+
+---
+
+
+Below we perform the task with the given goal description and tag. Format your response as a valid JSON with the keys "Reasoning" and "Result" similar to the examples above.
+Goal Description: {goal}
+Tag: {tag}
+Tag value being considered: {tagValue}
+Response:"""
+      response = self.tracker.completion(self.completion_model, 0, prompt, stopToken="###", maxtokens=1000, format="chat")
+      responseJson = self.json_response_extractor(response)
+      print("DEBUG: " + str(responseJson))
+      score = responseJson.get('Score', 0)
+      return score
+
+
     def tag_goal_rankings(self, goal, processed_tags):
       #return list of tags sorted according to the goal
       boostRankings = []
       filterTags = []
-      for tag, result in processed_tags:
+      for tag, result in tqdm(processed_tags):
         for item in result['Result']['Boost']:
-          boostRankings.append(((tag['name'], item), 1))
+          score = self.score_tag_value_pair(goal, tag, item)
+          boostRankings.append(((tag['name'], item), score))
         for item in result['Result']['Filter']:
           boostRankings.append((tag['name'], item))
 

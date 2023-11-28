@@ -154,6 +154,94 @@ tagger.add_tag(
     parentAttributes=[['Purpose','Non_Professional_Event']]
 )
 
+tagger.add_tag(
+    name="School_Interest",
+    description="Identifies which Penn school(s) might be interested in the email.",
+    question="Which Penn school(s) is this email most relevant to?",
+    responses=['Arts_and_Sciences', 'SEAS', 'Nursing', 'Wharton', 'Multiple_Schools', 'All_Schools', 'Unknown/Uncertain'],
+    response_guide={
+        'Arts_and_Sciences': 'Relevant to the School of Arts and Sciences.',
+        'SEAS': 'Relevant to the School of Engineering and Applied Science.',
+        'Nursing': 'Relevant to the School of Nursing.',
+        'Wharton': 'Relevant to the Wharton School.',
+        'Multiple_Schools': 'Relevant to more than one Penn school.',
+        'All_Schools': 'Relevant to all Penn schools.',
+        'Unknown/Uncertain': 'Unclear which school(s) the email is relevant to.'
+    },
+    parentAttributes=None
+)
+
+tagger.add_tag(
+    name="SAS_Major_Interest",
+    description="Relevant majors in the School of Arts and Sciences.",
+    question="Which majors in the School of Arts and Sciences might be interested in this email?",
+    responses=['Humanities', 'Social_Sciences', 'Natural_Sciences', 'Interdisciplinary', 'Cultural_Studies', 'Other', 'Unknown/Uncertain'],
+    response_guide={
+        'Humanities': 'Relevant to humanities majors.',
+        'Social_Sciences': 'Relevant to social science majors.',
+        'Natural_Sciences': 'Relevant to natural science majors.',
+        'Interdisciplinary': 'Relevant to interdisciplinary majors.',
+        'Cultural_Studies': 'Relevant to cultural studies majors.',
+        'Other': 'Relevant to other majors not listed.',
+        'Unknown/Uncertain': 'Unclear which majors the email is relevant to.'
+    },
+    parentAttributes=[['School_Interest', 'Arts_and_Sciences']]
+)
+
+
+tagger.add_tag(
+    name="SEAS_Major_Interest",
+    description="Relevant majors in the School of Engineering and Applied Science.",
+    question="Which majors in SEAS might be interested in this email?",
+    responses=['Bioengineering', 'Computer_Science_and_Engineering', 'Electrical_Engineering', 'Mechanical_Engineering', 'Chemical_Engineering', 'Other', 'Unknown/Uncertain'],
+    response_guide={
+        'Bioengineering': 'Relevant to Bioengineering majors.',
+        'Computer_Science_and_Engineering': 'Relevant to Computer Science and Engineering majors.',
+        'Electrical_Engineering': 'Relevant to Electrical Engineering majors.',
+        'Mechanical_Engineering': 'Relevant to Mechanical Engineering and Applied Mechanics majors.',
+        'Chemical_Engineering': 'Relevant to Chemical and Biomolecular Engineering majors.',
+        'Other': 'Relevant to other SEAS majors not listed.',
+        'Unknown/Uncertain': 'Unclear which majors the email is relevant to.'
+    },
+    parentAttributes=[['School_Interest', 'SEAS']]
+)
+
+
+tagger.add_tag(
+    name="Nursing_Major_Interest",
+    description="Relevant majors in the School of Nursing.",
+    question="Which majors in the School of Nursing might be interested in this email?",
+    responses=['Nursing', 'Nutrition_Science', 'Other', 'Unknown/Uncertain'],
+    response_guide={
+        'Nursing': 'Relevant to Nursing majors.',
+        'Nutrition_Science': 'Relevant to Nutrition Science majors.',
+        'Other': 'Relevant to other Nursing school majors not listed.',
+        'Unknown/Uncertain': 'Unclear which majors the email is relevant to.'
+    },
+    parentAttributes=[['School_Interest', 'Nursing']]
+)
+
+
+tagger.add_tag(
+    name="Wharton_Major_Interest",
+    description="Relevant majors in the Wharton School.",
+    question="Which majors in the Wharton School might be interested in this email?",
+    responses=['Finance_and_Accounting', 'Marketing_and_Communication', 'Management_and_Legal_Studies', 'Business_Analytics_and_Operations', 'Health_Care_Management', 'Environmental_and_Social_Governance', 'Individualized', 'Other', 'Unknown/Uncertain'],
+    response_guide={
+        'Finance_and_Accounting': 'Relevant to Finance and Accounting majors.',
+        'Marketing_and_Communication': 'Relevant to Marketing and Communication majors.',
+        'Management_and_Legal_Studies': 'Relevant to Management and Legal Studies majors.',
+        'Business_Analytics_and_Operations': 'Relevant to Business Analytics and Operations majors.',
+        'Health_Care_Management': 'Relevant to Health Care Management majors.',
+        'Environmental_and_Social_Governance': 'Relevant to Environmental, Social, and Governance majors.',
+        'Individualized': 'Relevant to Individualized majors.',
+        'Other': 'Relevant to other Wharton majors not listed.',
+        'Unknown/Uncertain': 'Unclear which majors the email is relevant to.'
+    },
+    parentAttributes=[['School_Interest', 'Wharton']]
+)
+
+
 @application.route('/')
 def hello_world():
     return 'Hello, World!'
