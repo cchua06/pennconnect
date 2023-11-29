@@ -7,30 +7,117 @@ var AWS = require('aws-sdk');
 AWS.config.update(config.aws_remote_config);
 var db = new AWS.DynamoDB();
 var s3 = new AWS.S3();
+const axios = require('axios')
+const flaskServer = "http://127.0.0.1:5000/";
 
-var getAnnouncements = function(req, res) {
-    let user = req.session.userId;
-    let posts = [{
-        announcementId: 1,
-        announcementTitle: "CIS Colloquium",
-        userCreated: "aiatpenn",
-        contents: "Join us this Saturday at 10 am",
-        announcementDate: "10/09/2023"
-    }, {
-        announcementId: 1,
-        announcementTitle: "Basketball Pickup",
-        userCreated: "cchua06",
-        contents: "Join us this Sunday at 11:30 am at Pottruck",
-        announcementDate: "11/11/2023"
-    }]
-    res.send(posts);
+var loadAnnouncementScores = async function(posts, userAlgorithm) {
+    const apiURL = flaskServer + "get_score";
+    const headers = {'Content-Type': 'application/json'};
+
+    return new Promise((resolve, reject) => {
+        let data = {};
+        var count = 0;
+
+        for (var i = 0; i < posts.length; i++) {
+            const postParams = JSON.stringify({ announcement_id: posts[i].announcementId.S, algorithm_id: userAlgorithm });
+            axios.post(apiURL, postParams, { headers })
+            .then(response => {
+                var announcementId = JSON.parse(response.config.data).announcement_id;
+                data[announcementId] = response.data.score
+                if (count == posts.length - 1) {
+                    resolve(data);
+                }
+                count++;
+            })
+            .catch(error => {
+                reject(error);
+            });
+        }
+    })
+}
+
+function parseCustomDate(dateString) {
+    // Parse the custom date format 'DD/MM/YYYY, HH:mmA'
+    const parts = dateString.match(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+)([APMapm]+)/);
+    const day = parseInt(parts[1], 10);
+    const month = parseInt(parts[2], 10) - 1; // Months are zero-based in JavaScript
+    const year = parseInt(parts[3], 10);
+    let hours = parseInt(parts[4], 10);
+    const minutes = parseInt(parts[5], 10);
+    const meridiem = parts[6].toUpperCase();
+
+    if (meridiem === 'PM' && hours < 12) {
+        hours += 12;
+    } else if (meridiem === 'AM' && hours === 12) {
+        hours = 0;
+    }
+
+    return new Date(year, month, day, hours, minutes);
+}
+
+var getAnnouncements = async function(user) {
+    return new Promise((resolve, reject) => {
+        const params = {
+            TableName: 'announcements',
+        };
+    
+        db.scan(params, async function(err, data) {
+            var posts = data.Items;
+            if (err) {
+                reject(err);
+            } else {
+                const params1 = {
+                    TableName: 'users',
+                    Key: {
+                        "userId": {S: user}
+                    }
+                }
+    
+                db.getItem(params1, async function(err, algoData) {
+                    if (err) {
+                        console.log(err);
+                        reject(err);
+                    } else {
+                        var userAlgorithm = algoData.Item.algorithmId.S;
+    
+                        await loadAnnouncementScores(posts, userAlgorithm).then(value => {
+                            for (var i = 0; i < posts.length; i++) {
+                                var announcementId = posts[i].announcementId.S;
+                                posts[i].announcementId = announcementId;
+                                posts[i].announcementDateTime = posts[i].announcementDateTime.S;
+                                posts[i].contents = posts[i].contents.S;
+                                posts[i].announcementTitle = posts[i].announcementTitle.S;
+                                posts[i].userCreated = posts[i].userCreated.S;
+                                posts[i].score = value[announcementId];
+                                console.log(posts[i].announcementTitle);
+                                console.log(value[announcementId]);
+                            }
+
+                            const sortedAnnouncements = posts.sort((a, b) => {
+                                const scoreComparison = b.score - a.score;
+                                if (scoreComparison === 0) {
+                                    const dateA = parseCustomDate(a.announcementDateTime);
+                                    const dateB = parseCustomDate(b.announcementDateTime);
+                                    return dateB - dateA;
+                                }                   
+                                return scoreComparison;
+                            });
+                            resolve(sortedAnnouncements);
+                        })
+                    }
+                })
+            }
+        })
+    })
 }
 
 var homePage = async function(req, res) {
     if (!req.session.userId) {
         return res.redirect("/loginPage");
     } else {
-        return res.render('home.ejs', {userId: req.session.userId});
+        await getAnnouncements(req.session.userId).then(value => {
+            return res.render('home.ejs', {userId: req.session.userId, posts: value});
+        })
     }
 }
 

@@ -7,7 +7,44 @@ var sha256 = require('sha256');
 var config = require('./config.js');
 var AWS = require('aws-sdk');
 AWS.config.update(config.aws_remote_config);
+var db = new AWS.DynamoDB();
 const s3 = new AWS.S3();
+const axios = require('axios');
+
+async function generateAlgorithm(interestString) {
+    return new Promise((resolve, reject) => {
+        const apiURL = 'http://127.0.0.1:5000/create_algorithm'; // Use IPv4 loopback address
+        const data = JSON.stringify({ goal: interestString });
+        const headers = { 'Content-Type': 'application/json' };
+
+        axios.post(apiURL, data, { headers })
+        .then(response => {
+            resolve(response.data);
+        })
+        .catch(error => {
+            reject(error.message);
+        });
+    });
+}
+
+async function deleteAlgorithm(id) {
+    return new Promise((resolve, reject) => {
+        const params = {
+            TableName: 'algorithms',
+            Key: {
+              'algorithmId': {S: id},
+            },
+        };
+
+        db.deleteItem(params, function(err, data) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data.Item);
+            }
+        })
+    });
+}
 
 function makeid(length) {
     let result = '';
@@ -92,8 +129,102 @@ const parsefile = async (req, res) => {
                 }).join(' ');
             }
 
-            if (userType == "Student" || userType == "Professor") {
-                if (files.resume == null) {
+            await generateAlgorithm(interests).then(async function(algorithmId) {
+                var algorithmString = algorithmId.algorithmId;
+                if (userType == "Student" || userType == "Professor") {
+                    if (files.resume == null) {
+                        var params = {
+                            TableName: "users",
+                            Item: {
+                                "userId": {
+                                    "S": userId
+                                },
+                                "firstName": {
+                                    "S": firstName
+                                },
+                                "lastName": {
+                                    "S": lastName
+                                },
+                                "email": {
+                                    "S": email
+                                },
+                                "password": {
+                                    "S": hashed_password
+                                },
+                                "userType": {
+                                    "S": userType
+                                },
+                                "resumeBucketKey": {
+                                    "S": resumeFile
+                                },
+                                "orgWebsite": {
+                                    "S": orgWebsite
+                                },
+                                "orgDescription": {
+                                    "S": orgDescription
+                                },
+                                "interests": {
+                                    "S": interests
+                                },
+                                "algorithmId": {
+                                    "S": algorithmString
+                                }
+                            },
+                            ConditionExpression: 'attribute_not_exists(userId)',
+                            ReturnValues: 'NONE'
+                        };
+            
+                        resolve(params);
+                    } else {
+                        resumeFile = files.resume[0]._writeStream.path;
+                        await uploadFile(resumeFile, makeid(8)).then(value => {
+                            var params = {
+                                TableName: "users",
+                                Item: {
+                                    "userId": {
+                                        "S": userId
+                                    },
+                                    "firstName": {
+                                        "S": firstName
+                                    },
+                                    "lastName": {
+                                        "S": lastName
+                                    },
+                                    "email": {
+                                        "S": email
+                                    },
+                                    "password": {
+                                        "S": hashed_password
+                                    },
+                                    "userType": {
+                                        "S": userType
+                                    },
+                                    "resumeBucketKey": {
+                                        "S": value
+                                    },
+                                    "orgWebsite": {
+                                        "S": orgWebsite
+                                    },
+                                    "orgDescription": {
+                                        "S": orgDescription
+                                    },
+                                    "interests": {
+                                        "S": interests
+                                    },
+                                    "algorithmId": {
+                                        "S": algorithmString
+                                    }
+                                },
+                                ConditionExpression: 'attribute_not_exists(userId)',
+                                ReturnValues: 'NONE'
+                            };
+                
+                            resolve(params);
+                        })
+                    }
+                } else if (userType == "Organization") {
+                    orgWebsite = fields.orgWebsite[0];
+                    orgDescription = fields.orgDescription[0];
                     var params = {
                         TableName: "users",
                         Item: {
@@ -126,6 +257,9 @@ const parsefile = async (req, res) => {
                             },
                             "interests": {
                                 "S": interests
+                            },
+                            "algorithmId": {
+                                "S": algorithmString
                             }
                         },
                         ConditionExpression: 'attribute_not_exists(userId)',
@@ -134,94 +268,9 @@ const parsefile = async (req, res) => {
         
                     resolve(params);
                 } else {
-                    resumeFile = files.resume[0]._writeStream.path;
-                    await uploadFile(resumeFile, makeid(8)).then(value => {
-                        var params = {
-                            TableName: "users",
-                            Item: {
-                                "userId": {
-                                    "S": userId
-                                },
-                                "firstName": {
-                                    "S": firstName
-                                },
-                                "lastName": {
-                                    "S": lastName
-                                },
-                                "email": {
-                                    "S": email
-                                },
-                                "password": {
-                                    "S": hashed_password
-                                },
-                                "userType": {
-                                    "S": userType
-                                },
-                                "resumeBucketKey": {
-                                    "S": value
-                                },
-                                "orgWebsite": {
-                                    "S": orgWebsite
-                                },
-                                "orgDescription": {
-                                    "S": orgDescription
-                                },
-                                "interests": {
-                                    "S": interests
-                                }
-                            },
-                            ConditionExpression: 'attribute_not_exists(userId)',
-                            ReturnValues: 'NONE'
-                        };
-            
-                        resolve(params);
-                    })
+                    reject(err);
                 }
-            } else if (userType == "Organization") {
-                orgWebsite = fields.orgWebsite[0];
-                orgDescription = fields.orgDescription[0];
-                var params = {
-                    TableName: "users",
-                    Item: {
-                        "userId": {
-                            "S": userId
-                        },
-                        "firstName": {
-                            "S": firstName
-                        },
-                        "lastName": {
-                            "S": lastName
-                        },
-                        "email": {
-                            "S": email
-                        },
-                        "password": {
-                            "S": hashed_password
-                        },
-                        "userType": {
-                            "S": userType
-                        },
-                        "resumeBucketKey": {
-                            "S": resumeFile
-                        },
-                        "orgWebsite": {
-                            "S": orgWebsite
-                        },
-                        "orgDescription": {
-                            "S": orgDescription
-                        },
-                        "interests": {
-                            "S": interests
-                        }
-                    },
-                    ConditionExpression: 'attribute_not_exists(userId)',
-                    ReturnValues: 'NONE'
-                };
-    
-                resolve(params);
-            } else {
-                reject(err);
-            }
+            });
         });
     })
 }
@@ -258,9 +307,19 @@ const updatefile = async (req, originalData) => {
                 }
             } else {
                 if (fieldsToUpdate.interests != null) {
-                    fieldsToUpdate.interests = fields.interests[0];
+                    var originalAlgorithm = originalData["algorithmId"].S;
+                    var updatedInterest = fields.interests[0];
+                    
+                    await (deleteAlgorithm(originalAlgorithm).then(async function() {
+                        await (generateAlgorithm(updatedInterest)).then(value => {
+                            fieldsToUpdate.interests = updatedInterest;
+                            fieldsToUpdate.algorithmId = value.algorithmId;
+                            resolve(fieldsToUpdate);
+                        });
+                    }));
+                } else {
+                    resolve(fieldsToUpdate);
                 }
-                resolve(fieldsToUpdate);
             }
         })
     })

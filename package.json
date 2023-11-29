@@ -12,10 +12,13 @@
     "description": "",
     "dependencies": {
         "aws-sdk": "^2.1407.0",
+        "axios": "^1.6.2",
         "ejs": "^3.1.6",
         "express": "^4.17.1",
         "express-session": "^1.17.3",
         "formidable": "^3.5.1",
+        "http": "^0.0.1-security",
+        "json": "^11.0.0",
         "sha256": "^0.2.0"
     }
 }

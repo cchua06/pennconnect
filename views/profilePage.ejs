@@ -215,7 +215,9 @@ button:hover {
     // Function to remove interest from the list
     function removeInterest (button) {
             var interestItem = button.parentNode;
-            var interestText = " I am interested in" + interestItem.querySelector('span').textContent;
+            var interestText = " I am interested in " + interestItem.querySelector('span').textContent;
+            var interestText = interestText.trim().replace(/\s+/g, ' ');
+            console.log(interestText);
 
             // Remove from hidden input
             var hiddenInterestsContainer = document.getElementById('hiddenInterests');

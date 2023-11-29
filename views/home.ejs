@@ -113,62 +113,15 @@ button:hover {
     </div>
 
     <div class="pt-1 col-9 mt-4" style="margin: 0 auto">
-        <div id="container" class="col-12 justify-content-center d-flex" style="flex-direction: column;">
-        </div>
+        <% for (var i = 0; i < posts.length; i++) { %>
+            <div class="card mt-3 col-8" style="border-radius: 10px; display: block; margin: 0 auto">
+                <div class="announcement-title mt-2" style="font-size: 20px; font-weight: bold"><%= posts[i].announcementTitle %></div>
+                <div class="d-flex justify-content-between mt-1">
+                    <div class="announcement-date">Date: <%= posts[i].announcementDateTime %></div>
+                    <a class="announcement-user" href="/otherProfile?friendId=<%= posts[i].userCreated %>"><%= posts[i].userCreated %></a>
+                </div>
+                <div class="announcement-contents mt-3 mb-2"><%= posts[i].contents %></div>
+            </div>
+        <% } %>
     </div>
 </body>
-
-<script>
-    $.getJSON('/getAnnouncements', function(data) {
-        var pos = document.getElementById("container");
-        var posts = [];
-
-        for (var i = 0; i < data.length; i++) {
-            var container = document.createElement("div");
-            container.setAttribute("class", "card mt-3 col-8");
-            container.setAttribute("style", "border-radius: 10px; display: block; margin: 0 auto");
-
-            var titleElement = document.createElement("div");
-            titleElement.textContent = data[i].announcementTitle;
-            titleElement.className = "announcement-title";
-            titleElement.setAttribute("class", "mt-2");
-            titleElement.setAttribute("style", "font-size: 20px; font-weight: bold");
-
-            var userAndDate = document.createElement("div");
-            userAndDate.setAttribute("class", "d-flex justify-content-between mt-1");
-
-            var dateElement = document.createElement("div");
-            dateElement.textContent = "Date: " + data[i].announcementDate;
-            dateElement.className = "announcement-date";
-
-            var userElement = document.createElement("a");
-            userElement.textContent = data[i].userCreated;
-            userElement.className = "announcement-user";
-            userElement.setAttribute("href", "/otherProfile?friendId=" + data[i].userCreated);
-
-            userAndDate.appendChild(dateElement);
-            userAndDate.appendChild(userElement);
-
-            var contentsElement = document.createElement("div");
-            contentsElement.textContent = data[i].contents;
-            contentsElement.className = "announcement-contents";
-
-            var contentsElement = document.createElement("div");
-            contentsElement.textContent = data[i].contents;
-            contentsElement.className = "announcement-contents";
-            contentsElement.setAttribute("class", "mt-3 mb-2");
-
-            container.appendChild(titleElement);
-            container.appendChild(userAndDate);
-            container.appendChild(contentsElement);
-
-            pos.appendChild(container);
-            posts.push(container);
-        }
-
-
-        for (var i = 0; i < posts.length; i++) {
-            pos.appendChild(posts[i]);
-        }
-    })
-</script>
