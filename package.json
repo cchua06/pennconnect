@@ -19,6 +19,7 @@
         "formidable": "^3.5.1",
         "http": "^0.0.1-security",
         "json": "^11.0.0",
+        "node-cache": "^5.1.2",
         "sha256": "^0.2.0"
     }
 }

@@ -2,6 +2,7 @@ const express = require('express');
 const routes = require('./routes/routes.js');
 let session = require('express-session');
 const app = express();
+
 app.use(express.urlencoded());
 app.set('view engine', 'ejs');
 app.use(session({
@@ -11,6 +12,8 @@ app.use(session({
     cookie: {secure: false}
 }));
 app.use(express.static('public'));
+app.use('/styles', express.static('styles'));
+app.use('/assets', express.static('assets'));
 const http = require('http').Server(app);
 
 //view routes
@@ -26,6 +29,10 @@ app.post('/createAccount', routes.create_account);
 app.get('/profile', routes.profile_page);
 app.get('/connections', routes.connections_page);
 app.get('/otherProfile', routes.view_other);
+app.post('/sendFriendRequest', routes.send_friend_request);
+app.post('/deleteFriendRequest', routes.delete_friend_request);
+app.post('/addFriend', routes.add_friend);
+app.post('/deleteFriend', routes.delete_friend);
 
 //data routes
 app.get('/profileData', routes.get_profile);
@@ -33,6 +40,7 @@ app.post('/updateProfile', routes.update_profile);
 
 //announcement routes
 app.get('/getAnnouncements', routes.get_announcements);
+app.get('/announcement', routes.get_announcement);
 
 const fileparser = require('./routes/fileparser.js');
 

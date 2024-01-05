@@ -5,6 +5,9 @@
     <title>Register</title>
 </head>
 
+<!--Default style-->
+<link rel="stylesheet" type="text/css" href="/styles/styles.css">
+
 <script>
     function roleChange(element) {
         var userType = element.value;
@@ -130,6 +133,8 @@
             if (userType === 'Student' && interestsList.children.length === 0) {
                 event.preventDefault(); // Prevent form submission
                 document.getElementById('error-message').textContent = 'Please enter at least one interest.';
+            } else {
+                document.body.style.cursor = 'wait';
             }
         });
     });

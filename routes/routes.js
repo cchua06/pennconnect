@@ -1,5 +1,7 @@
 var sha256 = require('sha256');
 const fileparser = require('./fileparser.js');
+const NodeCache = require('node-cache');
+const cache = new NodeCache();
 
 //connect DynamoDB
 var config = require('./config.js');
@@ -60,55 +62,90 @@ var getAnnouncements = async function(user) {
         const params = {
             TableName: 'announcements',
         };
+
+        const cachedAnnouncements = cache.get(user);
+
+        if (cachedAnnouncements) {
+            resolve(cachedAnnouncements);
+        } else {
+            db.scan(params, async function(err, data) {
+                var posts = data.Items;
+                if (err) {
+                    reject(err);
+                } else {
+                    const params1 = {
+                        TableName: 'users',
+                        Key: {
+                            "userId": {S: user}
+                        }
+                    }
+        
+                    db.getItem(params1, async function(err, algoData) {
+                        if (err) {
+                            console.log(err);
+                            reject(err);
+                        } else {
+                            var userAlgorithm = algoData.Item.algorithmId.S;
+        
+                            await loadAnnouncementScores(posts, userAlgorithm).then(value => {
+                                for (var i = 0; i < posts.length; i++) {
+                                    var announcementId = posts[i].announcementId.S;
+                                    posts[i].announcementId = announcementId;
+                                    posts[i].announcementDateTime = posts[i].announcementDateTime.S;
+                                    posts[i].contents = posts[i].contents.S;
+                                    posts[i].announcementTitle = posts[i].announcementTitle.S;
+                                    posts[i].userCreated = posts[i].userCreated.S;
+                                    posts[i].score = value[announcementId];
+                                    posts[i].tags = posts[i].tags.S;
+                                }
     
-        db.scan(params, async function(err, data) {
-            var posts = data.Items;
+                                const sortedAnnouncements = posts.sort((a, b) => {
+                                    const scoreComparison = b.score - a.score;
+                                    if (scoreComparison === 0) {
+                                        const dateA = parseCustomDate(a.announcementDateTime);
+                                        const dateB = parseCustomDate(b.announcementDateTime);
+                                        return dateB - dateA;
+                                    }                   
+                                    return scoreComparison;
+                                });
+                                cache.set(user, sortedAnnouncements);
+                                resolve(sortedAnnouncements);
+                            })
+                        }
+                    })
+                }
+            });
+        }
+    })
+}
+
+var retrieveAnnouncementData = async function (announcementId) {
+    return new Promise((resolve, reject) => {
+        const params = {
+            TableName: 'announcements',
+            Key: {
+                "announcementId": {S: announcementId}
+            }
+        }
+
+        db.getItem(params, function (err, data) {
             if (err) {
                 reject(err);
             } else {
-                const params1 = {
-                    TableName: 'users',
-                    Key: {
-                        "userId": {S: user}
-                    }
-                }
-    
-                db.getItem(params1, async function(err, algoData) {
-                    if (err) {
-                        console.log(err);
-                        reject(err);
-                    } else {
-                        var userAlgorithm = algoData.Item.algorithmId.S;
-    
-                        await loadAnnouncementScores(posts, userAlgorithm).then(value => {
-                            for (var i = 0; i < posts.length; i++) {
-                                var announcementId = posts[i].announcementId.S;
-                                posts[i].announcementId = announcementId;
-                                posts[i].announcementDateTime = posts[i].announcementDateTime.S;
-                                posts[i].contents = posts[i].contents.S;
-                                posts[i].announcementTitle = posts[i].announcementTitle.S;
-                                posts[i].userCreated = posts[i].userCreated.S;
-                                posts[i].score = value[announcementId];
-                                console.log(posts[i].announcementTitle);
-                                console.log(value[announcementId]);
-                            }
-
-                            const sortedAnnouncements = posts.sort((a, b) => {
-                                const scoreComparison = b.score - a.score;
-                                if (scoreComparison === 0) {
-                                    const dateA = parseCustomDate(a.announcementDateTime);
-                                    const dateB = parseCustomDate(b.announcementDateTime);
-                                    return dateB - dateA;
-                                }                   
-                                return scoreComparison;
-                            });
-                            resolve(sortedAnnouncements);
-                        })
-                    }
-                })
+                resolve(data);
             }
         })
-    })
+    });
+}
+
+var getAnnouncement = async function(req, res) {
+    if (!req.session.userId) {
+        return res.redirect('/loginPage');
+    } else {
+        await retrieveAnnouncementData(req.query.id).then(value => {
+            return res.render('announcementPage.ejs', {data: value.Item});
+        })
+    }
 }
 
 var homePage = async function(req, res) {
@@ -229,18 +266,33 @@ var viewOther = async function(req, res) {
         let currentUser = req.session.userId;
         let friendId = req.query.friendId;
         if (currentUser == friendId) {
-            profilePage(req, res);
-            return;
+            return res.redirect('/profile');
         }
-        await getProfile(friendId).then(async function(value) {
-            const userType = value.userType.S;
-            if (userType == "Student" || userType == "Professor") {
-                await updateResumeLink(value.resumeBucketKey.S).then(resumeURL => {
-                    return res.render('viewProfile.ejs', {userId: currentUser, viewId: friendId, data: value, resume: resumeURL, orgWebsite: null});
-                });
-            } else {
-                return res.render('viewProfile.ejs', {userId: currentUser, viewId: friendId, data: value, resume: null, orgWebsite: value.orgWebsite.S});
+        let friendValue = 0;
+        await isFriend(currentUser, friendId).then(async function(alreadyFriend) {
+            if (alreadyFriend) {
+                friendValue = 3;
             }
+            await isFriendRequest(currentUser, friendId).then(async function(alreadyRequest) {
+                if (alreadyRequest) {
+                    friendValue = 2;
+                }
+                await isRequested(currentUser, friendId).then(async function(requested) {
+                    if (requested) {
+                        friendValue = 1;
+                    }
+                    await getProfile(friendId).then(async function(value) {
+                        const userType = value.userType.S;
+                        if (userType == "Student" || userType == "Professor") {
+                            await updateResumeLink(value.resumeBucketKey.S).then(resumeURL => {
+                                return res.render('viewProfile.ejs', {userId: currentUser, viewId: friendId, data: value, resume: resumeURL, orgWebsite: null, friend: friendValue});
+                            });
+                        } else {
+                            return res.render('viewProfile.ejs', {userId: currentUser, viewId: friendId, data: value, resume: null, orgWebsite: value.orgWebsite.S, friend: friendValue});
+                        }
+                    })
+                })
+            })
         })
     }
 }
@@ -249,8 +301,287 @@ var connectionsPage = async function(req, res) {
     if (!req.session.userId) {
         return res.redirect("/loginPage");
     } else {
-        return res.render('connections.ejs', {userId: req.session.userId});
+        await getFriends(req, res).then(async function(friends) {
+            await getRequests(req, res).then(async function(requests) {
+                return res.render('connections.ejs', {userId: req.session.userId, friends: friends, requests: requests});
+            });
+        });
     }
+}
+
+//connections routes
+var getFriends = async function(req, res) {
+    return new Promise((resolve, reject) => {
+        var params = {
+            TableName: "connections",
+            ProjectionExpression: "userB",
+            FilterExpression: "userA = :userId",
+            ExpressionAttributeValues: {
+                ":userId": { S: req.session.userId }
+            }
+        }
+    
+        db.scan(params, function(err, data) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data.Items);
+            }
+        })
+    })
+}
+
+var getRequests = async function(req, res) {
+    return new Promise((resolve, reject) => {
+        var params = {
+            TableName: "requests",
+            ProjectionExpression: "userA",
+            FilterExpression: "userB = :userId",
+            ExpressionAttributeValues: {
+                ":userId": { S: req.session.userId }
+            }
+        }
+    
+        db.scan(params, function(err, data) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data.Items);
+            }
+        })
+    })
+}
+
+var isFriend = async function(currUser, friend) {
+    return new Promise((resolve, reject) => {
+        params = {
+            TableName: "connections",
+            Key: {
+                "uniqueId": {
+                    "S": currUser + "|%|" + friend
+                }
+            }
+        }
+
+
+        db.getItem(params, function(err, data) {
+            if (data == null) {
+                resolve(false);
+            } else if (Object.keys(data).length === 0) {
+                resolve(false);
+            } else {
+                resolve(true);
+            }
+        })
+    })
+}
+
+var isFriendRequest = async function(currUser, friend) {
+    return new Promise((resolve, reject) => {
+        params = {
+            TableName: "requests",
+            Key: {
+                "uniqueId": {
+                    "S": currUser + "|%|" + friend
+                }
+            }
+        }
+
+        db.getItem(params, function(err, data) {
+            if (data == null) {
+                resolve(false);
+            } else if (Object.keys(data).length === 0) {
+                resolve(false);
+            } else {
+                resolve(true);
+            }
+        })
+    })
+}
+
+var isRequested = async function(currUser, friend) {
+    return new Promise((resolve, reject) => {
+        params = {
+            TableName: "requests",
+            Key: {
+                "uniqueId": {
+                    "S": friend + "|%|" + currUser
+                }
+            }
+        }
+
+        db.getItem(params, function(err, data) {
+            if (data == null) {
+                resolve(false);
+            } else if (Object.keys(data).length === 0) {
+                resolve(false);
+            } else {
+                resolve(true);
+            }
+        })
+    })
+}
+
+var sendFriendRequest = function(req, res) {
+    const currentUser = req.body.currentUser;
+    const friendToAdd = req.body.friendToAdd;
+    const currentDate = new Date();
+    const formattedDate = currentDate.toISOString().slice(0, 16).replace("T", " ");
+    const params = {
+        TableName: 'requests',
+        Item: {
+            "uniqueId": {
+                "S": currentUser + "|%|" + friendToAdd
+            },
+            "userA": {
+                "S": currentUser
+            },
+            "userB": {
+                "S": friendToAdd
+            },
+            "requestSince": {
+                "S": formattedDate
+            }
+        }
+    }
+
+    db.putItem(params, function(err, data) {
+        if (err) {
+            return err;
+        } else {
+            return res.redirect('/otherProfile?friendId=' + friendToAdd);
+        }
+    })
+}
+
+var deleteFriendRequest = async function(req, res) {
+    const currUser = req.session.userId;
+    const friend = req.body.friendToDel;
+    const params = {
+        TableName: 'requests',
+        Key: {
+            'uniqueId': {S: friend + "|%|" + currUser},
+        },
+    };
+
+    db.deleteItem(params, async function(err, data) {
+        if (err) {
+            res.send(err);
+        } else {
+            res.send(data);
+        }
+    })
+}
+
+var deleteFriendRequestNoAjax = async function(req, res) {
+    return new Promise((resolve, reject) => {
+        const currUser = req.session.userId;
+        const friend = req.body.friendToDel;
+        const params = {
+            TableName: 'requests',
+            Key: {
+              'uniqueId': {S: friend + "|%|" + currUser},
+            },
+        };
+
+        db.deleteItem(params, async function(err, data) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(data);
+            }
+        })
+    });
+}
+
+var addFriend = async function(req, res) {
+    const currentUser = req.session.userId;
+    const friendToAdd = req.body.friendToAdd;
+    await deleteFriendRequestNoAjax(req, res).then(async function(value) {
+        const currentDate = new Date();
+        const formattedDate = currentDate.toISOString().slice(0, 16).replace("T", " ");
+        const params = {
+            TableName: 'connections',
+            Item: {
+                "uniqueId": {
+                    "S": currentUser + "|%|" + friendToAdd
+                },
+                "userA": {
+                    "S": currentUser
+                },
+                "userB": {
+                    "S": friendToAdd
+                },
+                "friendSince": {
+                    "S": formattedDate
+                }
+            }
+        };
+
+        db.putItem(params, function(err, data) {
+            if (err) { //already a friend
+                res.send(err);
+            } else {
+                const params1 = {
+                    TableName: 'connections',
+                    Item: {
+                        "uniqueId": {
+                            "S": friendToAdd + "|%|" + currentUser
+                        },
+                        "userA": {
+                            "S": friendToAdd
+                        },
+                        "userB": {
+                            "S": currentUser
+                        },
+                        "friendSince": {
+                            "S": formattedDate
+                        }
+                    }
+                };
+
+                db.putItem(params1, function(err1, data1) {
+                    if (err1) { 
+                        res.send(err1);
+                    } else {
+                        res.send(data1);
+                    }
+                });
+            }
+        });
+    });
+};
+
+var deleteFriend = async function(req, res) {
+    const currUser = req.session.userId;
+    const friendToDel = req.body.friendToDel;
+    const params = {
+        TableName: 'connections',
+        Key: {
+          'uniqueId': {S: friendToDel + "|%|" + currUser},
+        },
+    };
+
+    db.deleteItem(params, function(err, data) {
+        if (err) {
+            reject(err);
+        } else {
+            const params = {
+                TableName: 'connections',
+                Key: {
+                  'uniqueId': {S: currUser + "|%|" + friendToDel},
+                },
+            };
+    
+            db.deleteItem(params, async function(err, data) {
+                if (err) {
+                    res.send(err);
+                } else {
+                    res.send(data);
+                }
+            })
+        }
+    })
 }
 
 //get signed url of a bucket key
@@ -290,6 +621,7 @@ var updateProfile = async function(req, res) {
     console.log("Updating profile for user: ", user);
 
     await getProfile(user).then(async function(originalData) {
+        cache.del(user);
         await fileparser.updatefile(req, originalData).then(async data => {
             if (data && Object.keys(data).length > 0) {
                 const params = {
@@ -343,11 +675,16 @@ var view_routes = {
     register_page: registerPage,
     profile_page: profilePage,
     view_other: viewOther,
+    send_friend_request: sendFriendRequest,
+    delete_friend_request: deleteFriendRequest,
+    add_friend: addFriend,
+    delete_friend: deleteFriend,
     connections_page: connectionsPage,
     create_account: createAccount,
     get_profile: getProfile,
     update_profile: updateProfile,
     get_announcements: getAnnouncements,
+    get_announcement: getAnnouncement,
     log_out: logOut
 }
 

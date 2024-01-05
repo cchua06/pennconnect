@@ -16,89 +16,14 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/js/bootstrap-select.min.js"></script>
 
-<!--Style for the navbar-->
-<style>
-* {box-sizing: border-box;}
-
-/* Style the navbar */
-.topnav {
-    overflow: hidden;
-    background-color: #e9e9e9;
-}
-
-/* Navbar links */
-.topnav a {
-    float: left;
-    display: block;
-    color: black;
-    text-align: center;
-    padding: 14px 16px;
-    text-decoration: none;
-    font-size: 17px;
-}
-
-/* Navbar links on mouse-over */
-.topnav a:hover {
-    background-color: #ddd;
-    color: black;
-}
-
-/* Active/current link */
-.topnav a.active {
-    background-color: #002058;
-    color: white;
-}
-
-.topnav a.logout {
-    background-color: #767676;
-    color: white;
-}
-
-.topnav a.logout:hover {
-    background-color: #222222;
-    color: white;
-}
-
-.topnav .login-container button:hover {
-    background: #ccc;
-}
-
-/* Add responsiveness - On small screens, display the navbar vertically instead of horizontally */
-@media screen and (max-width: 600px) {
-    .topnav .login-container {
-    float: none;
-    }
-    .topnav a, .topnav input[type=text], .topnav .login-container button {
-    float: none;
-    display: block;
-    text-align: left;
-    width: 100%;
-    margin: 0;
-    padding: 14px;
-    }
-    .topnav input[type=text] {
-    border: 1px solid #ccc;
-    }
-}
-
-input {
-    font-size: 12px;
-}
-
-button {
-    background-color: #a9a9a9;
-    font-size: 12px;
-    border: 0px;
-    color: black;
-}
-
-button:hover {
-    background-color: #555555;
-    color: white;
-}
-</style>
+<!--Default style-->
+<link rel="stylesheet" type="text/css" href="/styles/styles.css">
 
 <script>
+    window.addEventListener('load', function () {
+        document.body.style.cursor = 'default';
+    });
+
     function toggleEdit() {
         var inputs = document.querySelectorAll("input[readonly]");
         var textareas = document.querySelectorAll("textarea[readonly]");
@@ -173,6 +98,11 @@ button:hover {
         var hiddenInterestsContainer = document.getElementById('hiddenInterests');
         hiddenInterestsContainer.value = interestsData;
 
+        var submitButton = document.getElementById("submitButton");
+        submitButton.addEventListener('click', function () {
+            document.body.style.cursor = 'wait';
+        });
+
         loadInterests();
         hideInterestRemoveButtons();
     });
@@ -217,7 +147,6 @@ button:hover {
             var interestItem = button.parentNode;
             var interestText = " I am interested in " + interestItem.querySelector('span').textContent;
             var interestText = interestText.trim().replace(/\s+/g, ' ');
-            console.log(interestText);
 
             // Remove from hidden input
             var hiddenInterestsContainer = document.getElementById('hiddenInterests');
@@ -265,13 +194,7 @@ button:hover {
 </script>
 
 <!--Navigation Bar-->
-<div class="topnav">
-    <a class="font-weight-bold">PennConnect</a>
-    <a class="active" href="/home" style="margin-left: 10px">Home</a>
-    <a href="/connections">Connections</a>
-    <a class="logout" href="/logOut" style="float:right">Log Out</a>
-    <a style="float:right; margin-right: 10px; font-weight: bold" href="/profile"><%= userId %></a>
-</div>
+<%- include('navbar.ejs') %>
 
 <body>
     <div class="align-items-center d-flex">
@@ -348,7 +271,7 @@ button:hover {
                 </div>
             </div>
             <div id="buttons" style="display: none;">
-                <button class="btn btn-primary" type="submit">Confirm Edits</button>
+                <button class="btn btn-primary" type="submit" id="submitButton">Confirm Edits</button>
                 <button class="btn btn-secondary" onclick="discardChanges(event)">Discard Changes</button>
             </div>
         </form>

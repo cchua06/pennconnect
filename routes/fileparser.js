@@ -311,6 +311,7 @@ const updatefile = async (req, originalData) => {
                     var updatedInterest = fields.interests[0];
                     
                     await (deleteAlgorithm(originalAlgorithm).then(async function() {
+                        console.log(updatedInterest);
                         await (generateAlgorithm(updatedInterest)).then(value => {
                             fieldsToUpdate.interests = updatedInterest;
                             fieldsToUpdate.algorithmId = value.algorithmId;

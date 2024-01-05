@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title><%= data.announcementTitle.S%></title>
+</head>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+<script src="https://cdn.rawgit.com/harvesthq/chosen/gh-pages/chosen.jquery.min.js"></script>
+<link href="https://cdn.rawgit.com/harvesthq/chosen/gh-pages/chosen.min.css" rel="stylesheet"/>
+
+<!--Include Bootstrap in imports-->
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.bundle.min.js"></script>
+
+<!--Multiple select script imports-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/css/bootstrap-select.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.1/js/bootstrap-select.min.js"></script>
+
+<!--Default style-->
+<link rel="stylesheet" type="text/css" href="/styles/styles.css">
+
+<!--Navigation Bar-->
+<%- include('navbar.ejs') %>
+
+<body>
+    <div class="align-items-center d-flex">
+        <div class="col-12 text-center font-weight-bold" style="margin-top: 20px; font-size: 35px"><%= data.announcementTitle.S%></div>
+    </div>
+
+    <div class="col-6 mx-auto text-center mt-3" style="border: 2px dotted #000; padding: 20px">
+        <div class="d-flex justify-content-between col-12 align-items-center">
+            <div class="announcement-date">Posted on: <%= (data.announcementDateTime.S).replace(',', '') %></div>
+            <a class="announcement-user" href="/otherProfile?friendId=<%= data.userCreated.S %>"><%= data.userCreated.S %></a>
+        </div>
+    
+        <div class="col-12 mt-3 mb-2 text-justify"><%= data.contents.S %></div>
+    </div>
+
+    <div class="row col-6 mx-auto mt-3">
+        <a class="col-2 text-center" style="font-weight: bold;">Tags:</a>
+        <div class="col-10">
+            <% var tags = JSON.parse(data.tags.S); %>
+            <% for (var i = 0; i < tags.length; i++) { %>
+                <% var tagText = tags[i][1].replace(/_/g, ' '); %>
+                <button class="btn btn-outline-secondary rounded-pill m-1 <%=tags[i][0]%>"><%= tagText %></button>
+            <% } %>
+        </div>
+    </div>
+
+    </div>
+</body>
