@@ -270,8 +270,8 @@ var viewOther = async function(req, res) {
         }
         let friendValue = 0;
         await isFriend(currentUser, friendId).then(async function(alreadyFriend) {
-            if (alreadyFriend) {
-                friendValue = 3;
+            if (alreadyFriend !== 'false') {
+                friendValue = alreadyFriend;
             }
             await isFriendRequest(currentUser, friendId).then(async function(alreadyRequest) {
                 if (alreadyRequest) {
@@ -366,11 +366,15 @@ var isFriend = async function(currUser, friend) {
 
         db.getItem(params, function(err, data) {
             if (data == null) {
-                resolve(false);
+                resolve('false');
             } else if (Object.keys(data).length === 0) {
-                resolve(false);
+                resolve('false');
             } else {
-                resolve(true);
+                var friendSince = data.Item.friendSince.S;
+                const inputDate = new Date(friendSince);
+                const options = { year: 'numeric', month: 'long', day: 'numeric' };
+                const formattedDate = inputDate.toLocaleDateString('en-US', options);
+                resolve(formattedDate);
             }
         })
     })

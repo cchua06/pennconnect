@@ -79,9 +79,7 @@
     </div>
 
     <div id="friendStatus" class="mt-2 col-9 text-right" style="margin: 0 auto">
-        <% if (friend == 3) { %>
-            Friend
-        <%} else if (friend == 2) { %>
+        <% if (friend == 2) { %>
             Friend Request Sent
         <%} else if (friend == 1) {%>
             <div class="align-items-center d-flex justify-content-end">
@@ -93,13 +91,15 @@
                     <button class="btn btn-danger ml-1" id="deleteFriend" onclick="deleteFriend()">Delete</button>
                 </div>
             </div>
-        <%} else { %>
+        <%} else if (friend == 0) { %>
             <form action="/sendFriendRequest" method="post" onsubmit="sendFriendReq()">
                 <input type="hidden" name="currentUser" value="<%= userId %>">
                 <input type="hidden" name="friendToAdd" value="<%= viewId %>">
                 <button class="btn btn-secondary" type="submit" id="addFriendButton">Add Friend</button>
             </form>
-        <%} %>
+        <%} else { %>
+            Friend since <%=friend%>
+        <%}%>
     </div>
 
     <div class="pt-1 col-9 mt-2" style="margin: 0 auto; border: 2px solid #000; padding: 20px">
