@@ -22,17 +22,84 @@
 <!--Navigation Bar-->
 <%- include('navbar.ejs') %>
 
+<style>
+    body {
+        overflow-y: scroll; /* Enable vertical scroll */
+        height: 100vh; /* Set the body height to 100% of the viewport height */
+    }
+</style>
+
 <script>
+    var startY;
+    var distY;
+
+    function autoExpand(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = (textarea.scrollHeight) + 'px';
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         var profileLink = document.querySelector('a[href="/profile"]');
         profileLink.addEventListener('click', function (event) {
                 document.body.style.cursor = 'wait';
             });
+        document.getElementById("postAnnouncementBox").style.display = "none";
+        var announcementTitleInput = document.getElementById("announcementTitleInput");
+
+        announcementTitleInput.addEventListener('input', function () {
+            if (announcementTitleInput.value.trim() !== '') {
+                announcementTitleInput.classList.add('announcementTitleText');
+            } else {
+                announcementTitleInput.classList.remove('announcementTitleText');
+            }
+        });
+
+        var announcementContent = document.getElementById("announcementContent");
+
+        announcementContent.addEventListener('input', function () {
+            if (announcementContent.value.trim() !== '') {
+                announcementContent.classList.add('announcementContent');
+            } else {
+                announcementContent.classList.remove('announcementContent');
+            }
+        });
+
+        announcementContent.addEventListener('input', function () {
+            autoExpand(announcementContent);
+        });
+
+        document.addEventListener('wheel', function (e) {
+            if (e.deltaY > 50) {
+                // If the user has scrolled down by at least 50 pixels using the scroll wheel, trigger the refresh action
+                location.reload(); // You can replace this with your custom refresh logic
+            }
+        });
     });
 
     window.addEventListener('load', function () {
         document.body.style.cursor = 'default';
     });
+
+    function postAnnouncement() {
+        var postBox = document.getElementById("postAnnouncementBox");
+        postBox.style.display = 'block';
+
+        var postShow = document.getElementById("postShowButton");
+        postShow.style.display = 'none';
+    }
+
+    function closeAnnouncementBox() {
+        var shouldDiscard = window.confirm("Are you sure you want to discard your post?");
+        if (shouldDiscard) {
+            var postBox = document.getElementById("postAnnouncementBox");
+            document.getElementById('announcementSearchInput').value = '';
+            document.getElementById('announcementContent').value = '';
+            postBox.style.display = 'none';
+
+            var postShow = document.getElementById("postShowButton");
+            postShow.style.display = 'inline';
+        }
+    }
 
     function filterAnnouncements() {
         var input, filter, cards, title, i;
@@ -49,6 +116,28 @@
             }
         });
     }
+
+    function post() {
+        document.body.style.cursor = 'wait';
+        document.getElementById("postAnnouncementButton").disabled = true;
+        var announcementContent = document.getElementById("announcementContent").value;
+        var announcementTitle = document.getElementById("announcementTitleInput").value;
+        $.ajax({
+            type: 'POST',
+            url: '/postAnnouncement',
+            data: { content: announcementContent, title: announcementTitle },
+            success: function (response) {
+                document.body.style.cursor = 'default';
+                location.reload();
+            },
+            error: function (error) {
+                console.error(error);
+            },
+            complete: function () {
+                document.body.style.cursor = 'default';
+            }
+        });
+    }
 </script>
 
 <body>
@@ -56,17 +145,34 @@
         <div class="col-12 text-center font-weight-bold" style="margin-top: 20px; font-size: 35px">Announcements</div>
     </div>
 
-    <div class="mt-3 col-12 d-flex justify-content-center">
-        <div class="col-4 d-flex">
-            <input type="text" id="announcementSearch" placeholder="Search for announcements..." class="form-control col-9">
+    <div class="mt-3 col-6 mx-auto d-flex justify-content-between">
+        <div class="col-2"></div>
+        <div class="col-8 d-flex">
+            <input type="text" id="announcementSearchInput" placeholder="Search for announcements..."
+                class="form-control col-9">
             <button class="btn btn-primary col-2 ml-1" onclick="filterAnnouncements()">Search</button>
+        </div>
+        <div class="col-2 text-right align-self-center">
+            <button class="btn btn-primary col-8" onclick="postAnnouncement()" id="postShowButton">
+                <a>Post</a>
+            </button>
         </div>
     </div>
 
     <div class="pt-1 col-9 mt-4" style="margin: 0 auto">
+        <div id="postAnnouncementBox" class="card mt-3 col-8" style="border-radius: 10px; display: block; margin: 0 auto">
+            <div class="col-12 mt-2" style="padding: 0">
+                <input id="announcementTitleInput" class="col-10 mt-2" placeholder="Announcement Title" style="border: none; padding: 0; font-size: 20px">
+                <button id="removePostIcon" type="button" class="btn btn-sm btn-danger mr-1 mt-1" style="float: right" onclick="closeAnnouncementBox()">X</button>
+            </div>
+            <textarea id="announcementContent" class="col-12 mt-2" placeholder="What do you have on your mind?" style="border: none; padding: 0; font-size: 1rem; resize: none; overflow-y: hidden;"></textarea>
+            <div class="col-12 text-right mt-2 mb-3" style="padding: 0">
+                <button class="btn btn-primary" onclick="post()" id="postAnnouncementButton">Post</button>
+            </div>
+        </div>
         <% for (var i = 0; i < posts.length; i++) { %>
             <div class="card mt-3 col-8" style="border-radius: 10px; display: block; margin: 0 auto">
-                <div class="announcement-title mt-2" style="font-size: 20px; font-weight: bold">
+                <div class="announcement-title mt-2">
                     <a class="announcementTitleText" href="/announcement?id=<%= posts[i].announcementId%>"><%= posts[i].announcementTitle %></a>
                 </div>
                 <div class="d-flex justify-content-between mt-1">

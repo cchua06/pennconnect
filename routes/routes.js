@@ -12,16 +12,18 @@ var s3 = new AWS.S3();
 const axios = require('axios')
 const flaskServer = "http://127.0.0.1:5000/";
 
-var loadAnnouncementScores = async function(posts, userAlgorithm) {
+var loadAnnouncementScores = async function(posts, userAlgorithm) {    
     const apiURL = flaskServer + "get_score";
     const headers = {'Content-Type': 'application/json'};
-
     return new Promise((resolve, reject) => {
         let data = {};
         var count = 0;
 
         for (var i = 0; i < posts.length; i++) {
-            const postParams = JSON.stringify({ announcement_id: posts[i].announcementId.S, algorithm_id: userAlgorithm });
+            const postParams = JSON.stringify({
+                announcement_id: posts[i].announcementId.S,
+                algorithm_id: userAlgorithm
+            });
             axios.post(apiURL, postParams, { headers })
             .then(response => {
                 var announcementId = JSON.parse(response.config.data).announcement_id;
@@ -36,6 +38,37 @@ var loadAnnouncementScores = async function(posts, userAlgorithm) {
             });
         }
     })
+}
+
+var postAnnouncementFlask = async function(postData) {
+    const apiURL = flaskServer + "log_announcement";
+    const headers = {'Content-Type': 'application/json'};
+    return new Promise((resolve, reject) => {
+        const postParams = JSON.stringify({
+            userCreated: postData.userCreated,
+            text: postData.content,
+            announcementTitle: postData.title
+        });
+        axios.post(apiURL, postParams, {headers})
+        .then(response => {
+            resolve(response);
+        })
+        .catch(error => {
+            reject(error);
+        })
+    })
+}
+
+var postAnnouncement = async function(req, res) {
+    const currUser = req.session.userId;
+    const postData = {};
+    postData["userCreated"] = currUser;
+    postData["content"] = req.body.content;
+    postData["title"] = req.body.title;
+    await postAnnouncementFlask(postData).then(value => {
+        cache.del(currUser);
+        res.send(true);
+    });
 }
 
 function parseCustomDate(dateString) {
@@ -284,11 +317,15 @@ var viewOther = async function(req, res) {
                     await getProfile(friendId).then(async function(value) {
                         const userType = value.userType.S;
                         if (userType == "Student" || userType == "Professor") {
-                            await updateResumeLink(value.resumeBucketKey.S).then(resumeURL => {
-                                return res.render('viewProfile.ejs', {userId: currentUser, viewId: friendId, data: value, resume: resumeURL, orgWebsite: null, friend: friendValue});
-                            });
+                            if (value.resumeBucketKey.S != '') {
+                                await updateResumeLink(value.resumeBucketKey.S).then(resumeURL => {
+                                    return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: resumeURL, orgWebsite: null, friend: friendValue});
+                                });
+                            }  else {
+                                return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: null, orgWebsite: null, friend: friendValue});
+                            }
                         } else {
-                            return res.render('viewProfile.ejs', {userId: currentUser, viewId: friendId, data: value, resume: null, orgWebsite: value.orgWebsite.S, friend: friendValue});
+                            return res.render('profilePage.ejs', {userId: value.userId.S, data: value, resume: null, orgWebsite: value.orgWebsite.S, friend: friendValue});
                         }
                     })
                 })
@@ -477,6 +514,25 @@ var deleteFriendRequest = async function(req, res) {
     })
 }
 
+var deleteFriendRequestSelf = async function(req, res) {
+    const currUser = req.session.userId;
+    const friend = req.body.friendToDel;
+    const params = {
+        TableName: 'requests',
+        Key: {
+            'uniqueId': {S: currUser + "|%|" + friend},
+        },
+    };
+
+    db.deleteItem(params, async function(err, data) {
+        if (err) {
+            res.send(err);
+        } else {
+            res.send(data);
+        }
+    })
+}
+
 var deleteFriendRequestNoAjax = async function(req, res) {
     return new Promise((resolve, reject) => {
         const currUser = req.session.userId;
@@ -597,7 +653,8 @@ async function updateResumeLink(bucketKey) {
             Key: bucketKey,
             ResponseContentDisposition: `attachment; filename="${"resume.pdf"}"`
         }
-        resolve(s3.getSignedUrl('getObject', params));
+        const signedUrl = s3.getSignedUrl('getObject', params);
+        resolve(signedUrl);
     })
 }
 
@@ -668,6 +725,7 @@ var updateProfile = async function(req, res) {
 }
 
 var logOut = function(req, res) {
+    cache.del(req.session.userId);
     req.session.destroy();
     res.redirect('/loginPage');
 }
@@ -681,6 +739,7 @@ var view_routes = {
     view_other: viewOther,
     send_friend_request: sendFriendRequest,
     delete_friend_request: deleteFriendRequest,
+    delete_friend_request_self: deleteFriendRequestSelf,
     add_friend: addFriend,
     delete_friend: deleteFriend,
     connections_page: connectionsPage,
@@ -689,6 +748,7 @@ var view_routes = {
     update_profile: updateProfile,
     get_announcements: getAnnouncements,
     get_announcement: getAnnouncement,
+    post_announcement: postAnnouncement,
     log_out: logOut
 }
 

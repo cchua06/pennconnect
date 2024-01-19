@@ -31,6 +31,7 @@ app.get('/connections', routes.connections_page);
 app.get('/otherProfile', routes.view_other);
 app.post('/sendFriendRequest', routes.send_friend_request);
 app.post('/deleteFriendRequest', routes.delete_friend_request);
+app.post('/deleteFriendRequestSelf', routes.delete_friend_request_self);
 app.post('/addFriend', routes.add_friend);
 app.post('/deleteFriend', routes.delete_friend);
 
@@ -41,6 +42,7 @@ app.post('/updateProfile', routes.update_profile);
 //announcement routes
 app.get('/getAnnouncements', routes.get_announcements);
 app.get('/announcement', routes.get_announcement);
+app.post('/postAnnouncement', routes.post_announcement);
 
 const fileparser = require('./routes/fileparser.js');
 

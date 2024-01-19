@@ -32,24 +32,50 @@
         document.getElementById("addFriendButton").disabled = true;
     }
 
+    function deleteFriendReq() {
+        var shouldDiscard = window.confirm("Are you sure you want to remove this request?");
+        if (shouldDiscard) {
+            var friendToDel = '<%= viewId %>';
+            document.body.style.cursor = 'wait';
+            
+            $.ajax({
+                type: 'POST',
+                url: '/deleteFriendRequestSelf',
+                data: { friendToDel: friendToDel },
+                success: function (response) {
+                    location.reload();
+                },
+                error: function (error) {
+                    console.error(error);
+                },
+                complete: function () {
+                    document.body.style.cursor = 'default';
+                }
+            });
+        }
+    }
+
     function deleteFriend() {
-        var friendToDel = '<%= viewId %>'; // Get the value from the hidden input
-        document.body.style.cursor = 'wait';
-        
-        $.ajax({
-            type: 'POST',
-            url: '/deleteFriendRequest',
-            data: { friendToDel: friendToDel },
-            success: function (response) {
-                location.reload();
-            },
-            error: function (error) {
-                console.error(error);
-            },
-            complete: function () {
-                document.body.style.cursor = 'default';
-            }
-        });
+        var shouldDiscard = window.confirm("Are you sure you want to remove this request?");
+        if (shouldDiscard) {
+            var friendToDel = '<%= viewId %>';
+            document.body.style.cursor = 'wait';
+            
+            $.ajax({
+                type: 'POST',
+                url: '/deleteFriendRequest',
+                data: { friendToDel: friendToDel },
+                success: function (response) {
+                    location.reload();
+                },
+                error: function (error) {
+                    console.error(error);
+                },
+                complete: function () {
+                    document.body.style.cursor = 'default';
+                }
+            });
+        }
     }
 
     function addFriend() {
@@ -80,7 +106,10 @@
 
     <div id="friendStatus" class="mt-2 col-9 text-right" style="margin: 0 auto">
         <% if (friend == 2) { %>
-            Friend Request Sent
+            <div class="align-items-center d-flex justify-content-end">
+                <a>Friend Request Sent</a>
+                <button id="removeRequest" type="button" class="btn btn-sm btn-danger ml-2" onclick="deleteFriendReq()">X</button>
+            </div>
         <%} else if (friend == 1) {%>
             <div class="align-items-center d-flex justify-content-end">
                 <a class="mr-2">Incoming Friend Request</a>
