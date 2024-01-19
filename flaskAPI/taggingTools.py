@@ -18,8 +18,6 @@ openai.organization = "org-bgAXfs8WdU5942SLngg0OGpd"
 openai.api_key = "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"
 os.environ['OPENAI_API_KEY']=openai.api_key
 
-
-
 from transformers import GPT2Tokenizer
 
 class ApiTracker:
@@ -577,11 +575,12 @@ Response:"""
       return score
 
     def split_announcements(self, text):
-      prompt = f"""Your task is to split the text below into sub-messages. Format your response as a list.
+      prompt = f"""Your task is to split the text below to separate different announcements. Some messages only contain one announcement while some messages contain several announcements.
+Format your response as a list.
 The task format is as follows:
 
-Text: LONG MESSAGE
-Response: [message 1, message 2, ...]
+Text: TEXT BLOCK
+Response: [announcement 1, announcement 2, ...]
 
 
 Example:
