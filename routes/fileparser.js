@@ -2,6 +2,8 @@ const fs = require('fs');
 const Transform = require('stream').Transform;
 const formidable = require('formidable');
 var sha256 = require('sha256');
+const sgMail = require('@sendgrid/mail');
+const crypto = require('crypto');
 
 //connect DynamoDB
 var config = require('./config.js');
@@ -10,6 +12,7 @@ AWS.config.update(config.aws_remote_config);
 var db = new AWS.DynamoDB();
 const s3 = new AWS.S3();
 const axios = require('axios');
+const { send } = require('process');
 
 async function generateAlgorithm(interestString) {
     return new Promise((resolve, reject) => {
@@ -101,6 +104,30 @@ async function deleteFile(id) {
     })
 }
 
+var sendEmailVerification = async function(userEmail) {
+    return new Promise((resolve, reject) => {
+        sgMail.setApiKey(config.SENDGRID_API_KEY);
+        const token = crypto.randomBytes(64).toString('hex');
+        const url = 'http://localhost:8080/verify?token=' + token;
+        const msg = {
+            to: userEmail, // Change to your recipient
+            from: 'pennconnect34@gmail.com', // Change to your verified sender
+            subject: 'Verify your PennConnect Account',
+            text: 'Hello,\nClick on this link to verify your email: ' + url,
+            html: 'Hello,\nClick on this link to verify your email: ' + url,
+        };
+        sgMail
+        .send(msg)
+        .then(() => {
+            console.log("sent mail to " + userEmail);
+            resolve("Verification mail sent");
+        })
+        .catch((error) => {
+            reject(error);
+        })
+    })
+}
+
 const parsefile = async (req, res) => {
     console.log("Starting file parsing");
     return new Promise((resolve, reject) => {
@@ -129,10 +156,103 @@ const parsefile = async (req, res) => {
                 }).join(' ');
             }
 
-            await generateAlgorithm(interests).then(async function(algorithmId) {
-                var algorithmString = algorithmId.algorithmId;
-                if (userType == "Student" || userType == "Professor") {
-                    if (files.resume == null) {
+            await sendEmailVerification(email).then(async function() {
+                await generateAlgorithm(interests).then(async function(algorithmId) {
+                    var algorithmString = algorithmId.algorithmId;
+                    if (userType == "Student" || userType == "Professor") {
+                        if (files.resume == null) {
+                            var params = {
+                                TableName: "users",
+                                Item: {
+                                    "userId": {
+                                        "S": userId
+                                    },
+                                    "firstName": {
+                                        "S": firstName
+                                    },
+                                    "lastName": {
+                                        "S": lastName
+                                    },
+                                    "email": {
+                                        "S": email
+                                    },
+                                    "password": {
+                                        "S": hashed_password
+                                    },
+                                    "userType": {
+                                        "S": userType
+                                    },
+                                    "resumeBucketKey": {
+                                        "S": resumeFile
+                                    },
+                                    "orgWebsite": {
+                                        "S": orgWebsite
+                                    },
+                                    "orgDescription": {
+                                        "S": orgDescription
+                                    },
+                                    "interests": {
+                                        "S": interests
+                                    },
+                                    "algorithmId": {
+                                        "S": algorithmString
+                                    }
+                                },
+                                ConditionExpression: 'attribute_not_exists(userId)',
+                                ReturnValues: 'NONE'
+                            };
+                
+                            resolve(params);
+                        } else {
+                            resumeFile = files.resume[0]._writeStream.path;
+                            await uploadFile(resumeFile, makeid(8)).then(value => {
+                                var params = {
+                                    TableName: "users",
+                                    Item: {
+                                        "userId": {
+                                            "S": userId
+                                        },
+                                        "firstName": {
+                                            "S": firstName
+                                        },
+                                        "lastName": {
+                                            "S": lastName
+                                        },
+                                        "email": {
+                                            "S": email
+                                        },
+                                        "password": {
+                                            "S": hashed_password
+                                        },
+                                        "userType": {
+                                            "S": userType
+                                        },
+                                        "resumeBucketKey": {
+                                            "S": value
+                                        },
+                                        "orgWebsite": {
+                                            "S": orgWebsite
+                                        },
+                                        "orgDescription": {
+                                            "S": orgDescription
+                                        },
+                                        "interests": {
+                                            "S": interests
+                                        },
+                                        "algorithmId": {
+                                            "S": algorithmString
+                                        }
+                                    },
+                                    ConditionExpression: 'attribute_not_exists(userId)',
+                                    ReturnValues: 'NONE'
+                                };
+                    
+                                resolve(params);
+                            })
+                        }
+                    } else if (userType == "Organization") {
+                        orgWebsite = fields.orgWebsite[0];
+                        orgDescription = fields.orgDescription[0];
                         var params = {
                             TableName: "users",
                             Item: {
@@ -176,101 +296,10 @@ const parsefile = async (req, res) => {
             
                         resolve(params);
                     } else {
-                        resumeFile = files.resume[0]._writeStream.path;
-                        await uploadFile(resumeFile, makeid(8)).then(value => {
-                            var params = {
-                                TableName: "users",
-                                Item: {
-                                    "userId": {
-                                        "S": userId
-                                    },
-                                    "firstName": {
-                                        "S": firstName
-                                    },
-                                    "lastName": {
-                                        "S": lastName
-                                    },
-                                    "email": {
-                                        "S": email
-                                    },
-                                    "password": {
-                                        "S": hashed_password
-                                    },
-                                    "userType": {
-                                        "S": userType
-                                    },
-                                    "resumeBucketKey": {
-                                        "S": value
-                                    },
-                                    "orgWebsite": {
-                                        "S": orgWebsite
-                                    },
-                                    "orgDescription": {
-                                        "S": orgDescription
-                                    },
-                                    "interests": {
-                                        "S": interests
-                                    },
-                                    "algorithmId": {
-                                        "S": algorithmString
-                                    }
-                                },
-                                ConditionExpression: 'attribute_not_exists(userId)',
-                                ReturnValues: 'NONE'
-                            };
-                
-                            resolve(params);
-                        })
+                        reject(err);
                     }
-                } else if (userType == "Organization") {
-                    orgWebsite = fields.orgWebsite[0];
-                    orgDescription = fields.orgDescription[0];
-                    var params = {
-                        TableName: "users",
-                        Item: {
-                            "userId": {
-                                "S": userId
-                            },
-                            "firstName": {
-                                "S": firstName
-                            },
-                            "lastName": {
-                                "S": lastName
-                            },
-                            "email": {
-                                "S": email
-                            },
-                            "password": {
-                                "S": hashed_password
-                            },
-                            "userType": {
-                                "S": userType
-                            },
-                            "resumeBucketKey": {
-                                "S": resumeFile
-                            },
-                            "orgWebsite": {
-                                "S": orgWebsite
-                            },
-                            "orgDescription": {
-                                "S": orgDescription
-                            },
-                            "interests": {
-                                "S": interests
-                            },
-                            "algorithmId": {
-                                "S": algorithmString
-                            }
-                        },
-                        ConditionExpression: 'attribute_not_exists(userId)',
-                        ReturnValues: 'NONE'
-                    };
-        
-                    resolve(params);
-                } else {
-                    reject(err);
-                }
-            });
+                });
+            })
         });
     })
 }

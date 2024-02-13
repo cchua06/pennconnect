@@ -34,6 +34,7 @@ app.post('/deleteFriendRequest', routes.delete_friend_request);
 app.post('/deleteFriendRequestSelf', routes.delete_friend_request_self);
 app.post('/addFriend', routes.add_friend);
 app.post('/deleteFriend', routes.delete_friend);
+app.post('/verify', routes.verify_account);
 
 //data routes
 app.get('/profileData', routes.get_profile);

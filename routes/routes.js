@@ -250,8 +250,10 @@ var registerPage = function(req, res) {
 }
 
 var createAccount = async function(req, res) {
+
     await fileparser.parsefile(req).then(async data => {
         let userId = data.Item['userId'].S;
+        data.Item['verified'] = {"S": "F"};
 
         db.putItem(data, function(err, data) {
             if (err) { //username already exists
@@ -261,13 +263,18 @@ var createAccount = async function(req, res) {
                     console.error('Error:', err);
                 }
             } else {
-                req.session.userId = userId;
-                res.redirect('/home');
+                res.render('verifyAccount.ejs');
+                //req.session.userId = userId;
+                //res.redirect('/home');
             }
         });        
     }).catch(error => {
         console.log(error);
     });
+}
+
+var verifyAccount = async function(req, res) {
+
 }
 
 //user pages
@@ -399,7 +406,6 @@ var isFriend = async function(currUser, friend) {
                 }
             }
         }
-
 
         db.getItem(params, function(err, data) {
             if (data == null) {
@@ -745,6 +751,7 @@ var view_routes = {
     connections_page: connectionsPage,
     create_account: createAccount,
     get_profile: getProfile,
+    verify_account: verifyAccount,
     update_profile: updateProfile,
     get_announcements: getAnnouncements,
     get_announcement: getAnnouncement,
