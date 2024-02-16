@@ -317,6 +317,28 @@ def log_announcement():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@application.route('/delete_announcement', methods=['DELETE'])
+def delete_announcement():
+    try:
+        # Extract announcementId from the request
+        data = request.json
+        announcement_id = data['announcement_id']
+
+        # Get the DynamoDB table
+        table = dynamodb.Table('announcements')
+
+        # Delete the announcement from DynamoDB
+        response = table.delete_item(
+            Key={
+                'announcementId': announcement_id
+            }
+        )
+
+        return jsonify({'message': 'Announcement deleted successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @application.route('/create_algorithm', methods=['POST'])
